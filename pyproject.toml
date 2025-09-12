@@ -1,0 +1,93 @@
+[project]
+name = "mlip-struct-gen"
+version = "0.1.0"
+description = "Water box structure generation using Packmol"
+
+# External dependencies (install separately):
+# - packmol: Required for water box generation
+#   Install via: conda install -c conda-forge packmol
+#   Or compile from source: http://leandro.iqm.unicamp.br/m3g/packmol/
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24.0",
+    "ase>=3.22.0",
+    "rich>=13.0.0",
+    "lammps>=2024.8.29.3.0",
+    "dpdata>=0.2.24",
+    "tensorflow>=2.19.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+]
+all = [
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["mlip_struct_gen"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__.py
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # Exclude artifacts
+  \.git
+  | \.mypy_cache
+  | \.ruff_cache
+  | \.venv
+  | __pycache__
+)/
+'''
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+files = ["mlip_struct_gen/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "ase.*",
+    "numpy.*",
+    "rich.*",
+]
+ignore_missing_imports = true
