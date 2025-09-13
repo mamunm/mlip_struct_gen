@@ -144,6 +144,34 @@ SALT_MODELS = {
         "default_concentration": 0.15  # M
     },
     
+    "CsCl": {
+        "name": "Cesium Chloride",
+        "cation": {
+            "element": "Cs",
+            "charge": 1.0,
+            "mass": 132.905,
+            "ionic_radius": 1.67,
+            "vdw_radius": 3.43,
+            "lj_params": {
+                "charmm": {"epsilon": 0.0005, "sigma": 4.5170},
+                "amber": {"epsilon": 0.0005, "sigma": 4.6500}
+            }
+        },
+        "anion": {
+            "element": "Cl",
+            "charge": -1.0,
+            "mass": 35.453,
+            "ionic_radius": 1.81,
+            "vdw_radius": 1.75,
+            "lj_params": {
+                "charmm": {"epsilon": 0.1500, "sigma": 4.0400},
+                "amber": {"epsilon": 0.0128, "sigma": 4.9237}
+            }
+        },
+        "dissociation": 1.0,
+        "default_concentration": 0.15  # M
+    },
+    
     "CaCl2": {
         "name": "Calcium Chloride",
         "cation": {

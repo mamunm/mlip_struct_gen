@@ -1,0 +1,1 @@
+"""CLI generators for different structure types."""

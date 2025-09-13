@@ -1,12 +1,12 @@
 [project]
 name = "mlip-struct-gen"
 version = "0.1.0"
-description = "Water box structure generation using Packmol"
+description = "Machine Learning Interatomic Potential Structure Generator"
 
 # External dependencies (install separately):
 # - packmol: Required for water box generation
 #   Install via: conda install -c conda-forge packmol
-#   Or compile from source: http://leandro.iqm.unicamp.br/m3g/packmol/
+#   Or compile from source: https://github.com/m3g/packmol
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -17,6 +17,10 @@ dependencies = [
     "dpdata>=0.2.24",
     "tensorflow>=2.19.0",
 ]
+
+[project.scripts]
+mlip-struct-gen = "mlip_struct_gen.cli.main:main"
+mlip-water-box = "mlip_struct_gen.cli.generators.water_box:main"
 
 [project.optional-dependencies]
 dev = [
