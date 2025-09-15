@@ -299,7 +299,8 @@ def main() -> int:
     parser.add_argument("--quiet", "-q", action="store_true", help="Suppress output")
 
     # Use the same parser setup
-    add_parser(argparse._SubParsersAction(parser, parser.add_subparsers()))
+    subparsers = parser.add_subparsers()
+    add_parser(subparsers)
 
     args = parser.parse_args()
     return handle_command(args)
