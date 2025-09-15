@@ -1,254 +1,312 @@
-"""Validation functions for metal-salt-water interface generation parameters."""
+"""Validation for metal-salt-water interface generation parameters."""
 
-import numpy as np
-from typing import Any
+from pathlib import Path
+from typing import Set, Dict, Any
+import shutil
+
 from .input_parameters import MetalSaltWaterParameters
-from ..templates.salt_models import get_salt_model
+
+
+# Supported FCC metals with experimental lattice constants (Angstroms)
+SUPPORTED_METALS: Set[str] = {
+    "Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt",
+    "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"
+}
+
+# Default lattice constants for common FCC metals (Angstroms)
+DEFAULT_LATTICE_CONSTANTS = {
+    "Al": 4.050,
+    "Au": 4.078,
+    "Ag": 4.085,
+    "Cu": 3.615,
+    "Ni": 3.524,
+    "Pd": 3.890,
+    "Pt": 3.924,
+    "Pb": 4.950,
+    "Rh": 3.803,
+    "Ir": 3.839,
+    "Ca": 5.588,
+    "Sr": 6.085,
+    "Yb": 5.485
+}
+
+# Supported salt types with their stoichiometry
+SUPPORTED_SALTS = {
+    "NaCl": {"cation": "Na", "anion": "Cl", "cation_count": 1, "anion_count": 1},
+    "KCl": {"cation": "K", "anion": "Cl", "cation_count": 1, "anion_count": 1},
+    "LiCl": {"cation": "Li", "anion": "Cl", "cation_count": 1, "anion_count": 1},
+    "CaCl2": {"cation": "Ca", "anion": "Cl", "cation_count": 1, "anion_count": 2},
+    "MgCl2": {"cation": "Mg", "anion": "Cl", "cation_count": 1, "anion_count": 2},
+    "NaBr": {"cation": "Na", "anion": "Br", "cation_count": 1, "anion_count": 1},
+    "KBr": {"cation": "K", "anion": "Br", "cation_count": 1, "anion_count": 1},
+    "CsCl": {"cation": "Cs", "anion": "Cl", "cation_count": 1, "anion_count": 1},
+}
+
+# Ion parameters (masses in g/mol, radii in Angstroms)
+ION_PARAMETERS = {
+    "Na": {"mass": 22.990, "charge": 1.0, "vdw_radius": 2.27},
+    "K": {"mass": 39.098, "charge": 1.0, "vdw_radius": 2.75},
+    "Li": {"mass": 6.941, "charge": 1.0, "vdw_radius": 1.82},
+    "Ca": {"mass": 40.078, "charge": 2.0, "vdw_radius": 2.31},
+    "Mg": {"mass": 24.305, "charge": 2.0, "vdw_radius": 1.73},
+    "Cs": {"mass": 132.905, "charge": 1.0, "vdw_radius": 3.43},
+    "Cl": {"mass": 35.453, "charge": -1.0, "vdw_radius": 1.81},
+    "Br": {"mass": 79.904, "charge": -1.0, "vdw_radius": 1.96},
+}
+
+# Water model parameters
+WATER_MODELS = {
+    "SPC/E": {
+        "OH_distance": 1.0,  # Angstroms
+        "HOH_angle": 109.47,  # degrees
+    },
+    "TIP3P": {
+        "OH_distance": 0.9572,  # Angstroms
+        "HOH_angle": 104.52,  # degrees
+    },
+    "TIP4P": {
+        "OH_distance": 0.9572,  # Angstroms
+        "HOH_angle": 104.52,  # degrees
+    },
+}
 
 
 def validate_parameters(params: MetalSaltWaterParameters) -> None:
     """
-    Validate all parameters for metal-salt-water interface generation.
-    
+    Validate metal-salt-water interface generation parameters.
+
     Args:
         params: Parameters to validate
-        
+
     Raises:
         ValueError: If any parameter is invalid
-        TypeError: If parameter types are incorrect
+        RuntimeError: If required external tools are missing
     """
-    _validate_basic_types(params)
-    _validate_metal_parameters(params)
-    _validate_salt_parameters(params)
-    _validate_water_parameters(params)
-    _validate_interface_parameters(params)
-    _validate_packmol_parameters(params)
-    _validate_output_parameters(params)
-    _validate_advanced_parameters(params)
+    # Check for PACKMOL availability
+    if not shutil.which(params.packmol_executable):
+        raise RuntimeError(
+            f"PACKMOL executable '{params.packmol_executable}' not found. "
+            f"Please install PACKMOL and ensure it's in your PATH, "
+            f"or specify the full path to the executable."
+        )
 
+    # Validate metal
+    if not params.metal:
+        raise ValueError("Metal element symbol is required")
 
-def _validate_basic_types(params: MetalSaltWaterParameters) -> None:
-    """Validate basic parameter types."""
-    if not isinstance(params.metal, str):
-        raise TypeError("metal must be a string")
-    
-    if not isinstance(params.miller_index, (tuple, list)) or len(params.miller_index) != 3:
-        raise TypeError("miller_index must be a tuple or list of 3 integers")
-    
-    if not all(isinstance(x, int) for x in params.miller_index):
-        raise TypeError("miller_index values must be integers")
-    
-    if not isinstance(params.metal_size, (tuple, list)) or len(params.metal_size) != 2:
-        raise TypeError("metal_size must be a tuple or list of 2 integers")
-    
+    if params.metal not in SUPPORTED_METALS:
+        raise ValueError(
+            f"Metal '{params.metal}' not supported. "
+            f"Supported metals: {', '.join(sorted(SUPPORTED_METALS))}"
+        )
+
+    # Validate metal_size
+    if not params.metal_size or len(params.metal_size) != 3:
+        raise ValueError("metal_size must be a tuple of 3 integers (nx, ny, nz)")
+
+    nx, ny, nz = params.metal_size
+
     if not all(isinstance(x, int) for x in params.metal_size):
-        raise TypeError("metal_size values must be integers")
-    
-    if not isinstance(params.n_metal_layers, int):
-        raise TypeError("n_metal_layers must be an integer")
-    
-    if not isinstance(params.output_file, str):
-        raise TypeError("output_file must be a string")
+        raise ValueError("metal_size values must be integers")
 
+    if nx < 1 or ny < 1:
+        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
 
-def _validate_metal_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate metal surface parameters."""
-    # Validate metal element
-    valid_metals = [
-        "Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", 
-        "Ca", "Sr", "Fe", "Co", "Zn", "Cd", "Hg"
-    ]
-    if params.metal not in valid_metals:
-        raise ValueError(f"Unsupported metal '{params.metal}'. Supported: {', '.join(valid_metals)}")
-    
-    # Validate Miller indices
-    if any(abs(h) > 10 for h in params.miller_index):
-        raise ValueError("Miller indices should be between -10 and 10")
-    
-    if all(h == 0 for h in params.miller_index):
-        raise ValueError("Miller indices cannot all be zero")
-    
-    # Validate metal size
-    if any(s < 1 or s > 20 for s in params.metal_size):
-        raise ValueError("metal_size values must be between 1 and 20")
-    
-    # Validate number of layers
-    if params.n_metal_layers < 3 or params.n_metal_layers > 20:
-        raise ValueError("n_metal_layers must be between 3 and 20")
-    
-    # Validate lattice constant
-    if params.lattice_constant is not None:
-        if not isinstance(params.lattice_constant, (int, float)):
-            raise TypeError("lattice_constant must be a number")
-        if params.lattice_constant <= 0 or params.lattice_constant > 10:
-            raise ValueError("lattice_constant must be between 0 and 10 Å")
-    
-    # Validate fix_bottom_layers
-    if not isinstance(params.fix_bottom_layers, int):
-        raise TypeError("fix_bottom_layers must be an integer")
-    if params.fix_bottom_layers < 0 or params.fix_bottom_layers >= params.n_metal_layers:
-        raise ValueError("fix_bottom_layers must be between 0 and n_metal_layers-1")
+    if nz < 3:
+        raise ValueError(f"Number of layers (nz={nz}) must be at least 3 for proper surface representation")
 
+    if nx > 20 or ny > 20:
+        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency")
 
-def _validate_salt_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate salt parameters."""
-    # Validate salt type or custom parameters
-    if params.custom_salt_params is None:
-        if params.salt_type is None:
-            raise ValueError("Either salt_type or custom_salt_params must be provided")
-        
-        # Validate built-in salt type
-        try:
-            get_salt_model(params.salt_type)
-        except ValueError as e:
-            raise ValueError(f"Invalid salt_type: {e}")
-    else:
-        # Validate custom salt parameters
-        if not isinstance(params.custom_salt_params, dict):
-            raise TypeError("custom_salt_params must be a dictionary")
-        
-        required_keys = ["cation", "anion"]
-        for key in required_keys:
-            if key not in params.custom_salt_params:
-                raise ValueError(f"custom_salt_params must contain '{key}' key")
-        
-        # Validate ion parameters
-        for ion_type in ["cation", "anion"]:
-            ion_data = params.custom_salt_params[ion_type]
-            if not isinstance(ion_data, dict):
-                raise TypeError(f"custom_salt_params['{ion_type}'] must be a dictionary")
-            
-            required_ion_keys = ["element", "charge", "mass"]
-            for key in required_ion_keys:
-                if key not in ion_data:
-                    raise ValueError(f"custom_salt_params['{ion_type}'] must contain '{key}' key")
-            
-            # Validate ion values
-            if not isinstance(ion_data["element"], str):
-                raise TypeError(f"{ion_type} element must be a string")
-            if not isinstance(ion_data["charge"], (int, float)):
-                raise TypeError(f"{ion_type} charge must be a number")
-            if not isinstance(ion_data["mass"], (int, float)):
-                raise TypeError(f"{ion_type} mass must be a number")
-            if ion_data["mass"] <= 0:
-                raise ValueError(f"{ion_type} mass must be positive")
-    
-    # Validate number of salt molecules
-    if not isinstance(params.n_salt_molecules, int):
-        raise TypeError("n_salt_molecules must be an integer")
-    if params.n_salt_molecules < 0 or params.n_salt_molecules > 10000:
-        raise ValueError("n_salt_molecules must be between 0 and 10000")
-    
-    # Validate neutralize flag
-    if not isinstance(params.neutralize, bool):
-        raise TypeError("neutralize must be a boolean")
+    if nz > 20:
+        raise ValueError(f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency")
 
+    # Validate salt parameters
+    if params.salt_type not in SUPPORTED_SALTS:
+        raise ValueError(
+            f"Salt type '{params.salt_type}' not supported. "
+            f"Supported salts: {', '.join(SUPPORTED_SALTS.keys())}"
+        )
 
-def _validate_water_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate water model parameters."""
+    if params.n_salt_molecules < 0:
+        raise ValueError(f"n_salt_molecules ({params.n_salt_molecules}) must be non-negative")
+
+    if params.n_salt_molecules > 1000:
+        raise ValueError(f"n_salt_molecules ({params.n_salt_molecules}) is very large (>1000). Consider computational cost.")
+
+    # Validate water parameters
+    if params.n_water_molecules < 1:
+        raise ValueError(f"n_water_molecules ({params.n_water_molecules}) must be at least 1")
+
+    if params.n_water_molecules > 10000:
+        raise ValueError(f"n_water_molecules ({params.n_water_molecules}) is very large (>10000). Consider computational cost.")
+
+    if params.water_density <= 0:
+        raise ValueError(f"water_density ({params.water_density} g/cm^3) must be positive")
+
+    if params.water_density < 0.5 or params.water_density > 1.5:
+        raise ValueError(f"water_density ({params.water_density} g/cm^3) should be between 0.5 and 1.5 g/cm^3")
+
     # Validate water model
-    valid_models = ["SPC/E", "TIP3P", "TIP4P"]
-    if params.water_model not in valid_models:
-        raise ValueError(f"Unsupported water model '{params.water_model}'. Supported: {', '.join(valid_models)}")
-    
-    # Validate solution thickness
-    if params.solution_thickness is not None:
-        if not isinstance(params.solution_thickness, (int, float)):
-            raise TypeError("solution_thickness must be a number")
-        if params.solution_thickness < 5.0 or params.solution_thickness > 200.0:
-            raise ValueError("solution_thickness must be between 5.0 and 200.0 Å")
-    
-    # Validate number of water molecules
-    if params.n_water_molecules is not None:
-        if not isinstance(params.n_water_molecules, int):
-            raise TypeError("n_water_molecules must be an integer")
-        if params.n_water_molecules < 1 or params.n_water_molecules > 100000:
-            raise ValueError("n_water_molecules must be between 1 and 100000")
-    
-    # Validate water density
-    if params.water_density is not None:
-        if not isinstance(params.water_density, (int, float)):
-            raise TypeError("water_density must be a number")
-        if params.water_density < 0.1 or params.water_density > 5.0:
-            raise ValueError("water_density must be between 0.1 and 5.0 g/cm³")
-    
-    # Check conflicting parameters
-    if params.n_water_molecules is not None and params.water_density is not None:
-        raise ValueError("Cannot specify both n_water_molecules and water_density")
+    if params.water_model not in WATER_MODELS:
+        raise ValueError(
+            f"Water model '{params.water_model}' not supported. "
+            f"Supported models: {', '.join(WATER_MODELS.keys())}"
+        )
 
+    # Validate gap and vacuum
+    if params.gap_above_metal < 0:
+        raise ValueError(f"gap_above_metal ({params.gap_above_metal} Angstroms) must be non-negative")
 
-def _validate_interface_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate interface parameters."""
-    # Validate metal-solution gap
-    if not isinstance(params.metal_solution_gap, (int, float)):
-        raise TypeError("metal_solution_gap must be a number")
-    if params.metal_solution_gap < 0.5 or params.metal_solution_gap > 20.0:
-        raise ValueError("metal_solution_gap must be between 0.5 and 20.0 Å")
-    
-    # Validate vacuum above solution
-    if not isinstance(params.vacuum_above_solution, (int, float)):
-        raise TypeError("vacuum_above_solution must be a number")
-    if params.vacuum_above_solution < 0.0 or params.vacuum_above_solution > 100.0:
-        raise ValueError("vacuum_above_solution must be between 0.0 and 100.0 Å")
+    if params.gap_above_metal > 10:
+        raise ValueError(f"gap_above_metal ({params.gap_above_metal} Angstroms) is very large (>10 Angstroms)")
 
+    if params.vacuum_above_water < 0:
+        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Angstroms) must be non-negative")
 
-def _validate_packmol_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate Packmol parameters."""
-    # Validate tolerance
-    if not isinstance(params.packmol_tolerance, (int, float)):
-        raise TypeError("packmol_tolerance must be a number")
-    if params.packmol_tolerance < 0.1 or params.packmol_tolerance > 10.0:
-        raise ValueError("packmol_tolerance must be between 0.1 and 10.0 Å")
-    
+    if params.vacuum_above_water > 50:
+        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Angstroms) should not exceed 50 Angstroms")
+
+    # Validate lattice constant if provided
+    if params.lattice_constant is not None:
+        if params.lattice_constant <= 0:
+            raise ValueError(f"Lattice constant ({params.lattice_constant} Angstroms) must be positive")
+
+        if params.lattice_constant < 2.0 or params.lattice_constant > 7.0:
+            raise ValueError(
+                f"Lattice constant ({params.lattice_constant} Angstroms) should be between 2.0 and 7.0 Angstroms "
+                f"for FCC metals"
+            )
+
+    # Validate fix_bottom_layers
+    if params.fix_bottom_layers < 0:
+        raise ValueError(f"fix_bottom_layers ({params.fix_bottom_layers}) must be non-negative")
+
+    if params.fix_bottom_layers >= nz:
+        raise ValueError(
+            f"fix_bottom_layers ({params.fix_bottom_layers}) must be less than "
+            f"the number of layers ({nz})"
+        )
+
+    # Validate PACKMOL parameters
+    if params.packmol_tolerance <= 0:
+        raise ValueError(f"packmol_tolerance ({params.packmol_tolerance} Angstroms) must be positive")
+
+    if params.packmol_tolerance < 1.0:
+        print(f"Warning: Small packmol_tolerance ({params.packmol_tolerance} Angstroms) may cause packing failures")
+
+    if params.packmol_tolerance > 3.0:
+        print(f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Angstroms) may result in poor packing")
+
     # Validate seed
-    if not isinstance(params.packmol_seed, int):
-        raise TypeError("packmol_seed must be an integer")
-    if params.packmol_seed < 0:
-        raise ValueError("packmol_seed must be non-negative")
-    
-    # Validate executable
-    if not isinstance(params.packmol_executable, str):
-        raise TypeError("packmol_executable must be a string")
-    if not params.packmol_executable.strip():
-        raise ValueError("packmol_executable cannot be empty")
+    if params.seed < 0:
+        raise ValueError(f"seed ({params.seed}) must be non-negative")
 
-
-def _validate_output_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate output parameters."""
     # Validate output file
-    if not params.output_file.strip():
-        raise ValueError("output_file cannot be empty")
-    
+    if not params.output_file:
+        raise ValueError("Output file path is required")
+
+    output_path = Path(params.output_file)
+
+    # Check if parent directory exists
+    parent_dir = output_path.parent
+    if parent_dir != Path(".") and not parent_dir.exists():
+        raise ValueError(f"Output directory does not exist: {parent_dir}")
+
     # Validate output format
-    if params.output_format is not None:
-        valid_formats = ["xyz", "vasp", "lammps-data"]
+    if params.output_format:
+        valid_formats = {"xyz", "vasp", "poscar", "lammps", "data"}
         if params.output_format.lower() not in valid_formats:
-            raise ValueError(f"Unsupported output format '{params.output_format}'. Supported: {', '.join(valid_formats)}")
+            raise ValueError(
+                f"Invalid output format '{params.output_format}'. "
+                f"Supported formats: {', '.join(valid_formats)}"
+            )
+    else:
+        # Check if file extension is recognizable
+        suffix = output_path.suffix.lower()
+        valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data"}
+        if suffix and suffix not in valid_extensions and output_path.name.upper() != "POSCAR":
+            print(f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default.")
 
 
-def _validate_advanced_parameters(params: MetalSaltWaterParameters) -> None:
-    """Validate advanced parameters."""
-    # Validate surface coverage
-    if not isinstance(params.surface_coverage, (int, float)):
-        raise TypeError("surface_coverage must be a number")
-    if params.surface_coverage <= 0.0 or params.surface_coverage > 1.0:
-        raise ValueError("surface_coverage must be between 0.0 and 1.0")
-    
-    # Validate hydroxyl parameters
-    if not isinstance(params.add_surface_hydroxyl, bool):
-        raise TypeError("add_surface_hydroxyl must be a boolean")
-    
-    if not isinstance(params.hydroxyl_coverage, (int, float)):
-        raise TypeError("hydroxyl_coverage must be a number")
-    if params.hydroxyl_coverage < 0.0 or params.hydroxyl_coverage > 1.0:
-        raise ValueError("hydroxyl_coverage must be between 0.0 and 1.0")
-    
-    # Validate center system
-    if not isinstance(params.center_system, bool):
-        raise TypeError("center_system must be a boolean")
-    
-    # Validate logging parameters
-    if not isinstance(params.log, bool):
-        raise TypeError("log must be a boolean")
-    
-    # Logger validation is optional since it's handled by the generator
+def get_lattice_constant(metal: str, custom_lattice: float = None) -> float:
+    """
+    Get lattice constant for a metal.
+
+    Args:
+        metal: Metal element symbol
+        custom_lattice: Custom lattice constant (optional)
+
+    Returns:
+        Lattice constant in Angstroms
+
+    Raises:
+        ValueError: If metal is not supported and no custom lattice is provided
+    """
+    if custom_lattice is not None:
+        return custom_lattice
+
+    if metal in DEFAULT_LATTICE_CONSTANTS:
+        return DEFAULT_LATTICE_CONSTANTS[metal]
+
+    raise ValueError(
+        f"No default lattice constant for metal '{metal}'. "
+        f"Please provide a custom lattice constant."
+    )
+
+
+def get_water_model_params(model: str) -> dict:
+    """
+    Get water model parameters.
+
+    Args:
+        model: Water model name
+
+    Returns:
+        Dictionary with water model parameters
+
+    Raises:
+        ValueError: If model is not supported
+    """
+    if model not in WATER_MODELS:
+        raise ValueError(f"Unknown water model: {model}")
+
+    return WATER_MODELS[model]
+
+
+def get_salt_info(salt_type: str) -> Dict[str, Any]:
+    """
+    Get salt information including stoichiometry and ion types.
+
+    Args:
+        salt_type: Salt type name
+
+    Returns:
+        Dictionary with salt information
+
+    Raises:
+        ValueError: If salt is not supported
+    """
+    if salt_type not in SUPPORTED_SALTS:
+        raise ValueError(f"Unknown salt type: {salt_type}")
+
+    return SUPPORTED_SALTS[salt_type]
+
+
+def get_ion_params(ion: str) -> Dict[str, Any]:
+    """
+    Get ion parameters including mass, charge, and radius.
+
+    Args:
+        ion: Ion element symbol
+
+    Returns:
+        Dictionary with ion parameters
+
+    Raises:
+        ValueError: If ion is not supported
+    """
+    if ion not in ION_PARAMETERS:
+        raise ValueError(f"Unknown ion: {ion}")
+
+    return ION_PARAMETERS[ion]

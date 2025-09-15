@@ -1,527 +1,614 @@
-"""Metal-water interface generation using ASE and Packmol."""
+"""Metal-water interface generation using ASE and PACKMOL."""
 
+from pathlib import Path
+from typing import Optional, Tuple
+import numpy as np
 import subprocess
 import tempfile
-import shutil
-from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
-import numpy as np
+import os
 
 try:
     from ase import Atoms
-    from ase.build import fcc111, fcc100, fcc110, surface, bulk
-    from ase.io import write, read
-    from ase.data import atomic_numbers, covalent_radii
+    from ase.build import fcc111
+    from ase.io import read, write
     from ase.constraints import FixAtoms
-    ASE_AVAILABLE = True
 except ImportError:
-    ASE_AVAILABLE = False
+    raise ImportError(
+        "ASE (Atomic Simulation Environment) is required for metal-water generation. "
+        "Install with: pip install ase"
+    )
 
 from .input_parameters import MetalWaterParameters
-from .validation import validate_parameters
-from ..templates.water_models import (
-    create_water_xyz,
-    get_water_density,
-    get_water_model
-)
+from .validation import validate_parameters, get_lattice_constant, get_water_model_params
+from ...utils.water_models import WATER_MODELS
 
 
 class MetalWaterGenerator:
-    """Generate metal-water interfaces using ASE and Packmol."""
-    
-    # Experimental lattice constants for common FCC metals (Angstroms)
-    LATTICE_CONSTANTS = {
-        "Al": 4.050, "Au": 4.078, "Ag": 4.085, "Cu": 3.615,
-        "Ni": 3.524, "Pd": 3.890, "Pt": 3.924, "Pb": 4.950,
-        "Rh": 3.803, "Ir": 3.839, "Ca": 5.588, "Sr": 6.085
-    }
-    
-    # Common Miller index to ASE function mapping
-    SURFACE_BUILDERS = {
-        (1, 1, 1): fcc111,
-        (1, 0, 0): fcc100,
-        (1, 1, 0): fcc110
-    }
-    
+    """Generate FCC(111) metal surfaces with water layers using ASE and PACKMOL."""
+
     def __init__(self, parameters: MetalWaterParameters):
         """
         Initialize metal-water interface generator.
-        
+
         Args:
-            parameters: Generation parameters
-            
+            parameters: Interface generation parameters
+
         Raises:
             ValueError: If parameters are invalid
             ImportError: If ASE is not available
+            RuntimeError: If PACKMOL is not available
         """
-        if not ASE_AVAILABLE:
-            raise ImportError(
-                "ASE (Atomic Simulation Environment) is required for metal surface generation. "
-                "Install with: pip install ase"
-            )
-        
         self.parameters = parameters
         validate_parameters(self.parameters)
-        
+
         # Setup logger
         self.logger: Optional["MLIPLogger"] = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
             else:
+                # Import here to avoid circular imports
                 try:
                     from ...utils.logger import MLIPLogger
                     self.logger = MLIPLogger()
                 except ImportError:
+                    # Gracefully handle missing logger
                     self.logger = None
-        
+
         # Get lattice constant
-        if self.parameters.lattice_constant is not None:
-            self.lattice_constant = self.parameters.lattice_constant
-        elif self.parameters.metal in self.LATTICE_CONSTANTS:
-            self.lattice_constant = self.LATTICE_CONSTANTS[self.parameters.metal]
-        else:
-            # Fallback to ASE data
-            try:
-                bulk_metal = bulk(self.parameters.metal, crystalstructure='fcc', a=4.0)
-                self.lattice_constant = bulk_metal.cell.cellpar()[0]
-            except:
-                self.lattice_constant = 4.0
-        
+        self.lattice_constant = get_lattice_constant(
+            self.parameters.metal,
+            self.parameters.lattice_constant
+        )
+
+        # Get water model parameters
+        self.water_params = get_water_model_params(self.parameters.water_model)
+
+        # Storage for intermediate structures
+        self.metal_slab = None
+        self.water_atoms = None
+        self.combined_system = None
+        self.box_dimensions = None
+
         if self.logger:
             self.logger.info("Initializing MetalWaterGenerator")
             self.logger.info(f"Metal: {self.parameters.metal}")
-            self.logger.info(f"Miller index: {self.parameters.miller_index}")
-            self.logger.info(f"Metal-water gap: {self.parameters.metal_water_gap} Å")
-            self.logger.info(f"Water model: {self.parameters.water_model}")
-    
+            self.logger.info(f"Metal size: {self.parameters.metal_size}")
+            self.logger.info(f"Water molecules: {self.parameters.n_water_molecules}")
+            self.logger.info(f"Lattice constant: {self.lattice_constant:.3f} Å")
+
     def generate(self) -> str:
         """
-        Generate metal-water interface structure.
-        
+        Generate the metal-water interface.
+
         Returns:
-            Path to generated structure file
-            
+            Path to the output file
+
         Raises:
             RuntimeError: If generation fails
         """
-        if self.logger:
-            self.logger.info("Starting metal-water interface generation")
-        
         try:
-            # Step 1: Generate metal surface
-            if self.logger:
-                self.logger.step("Creating metal surface")
-            metal_atoms = self._create_metal_surface()
-            
-            # Step 2: Calculate water region and molecule count
-            if self.logger:
-                self.logger.step("Calculating water region parameters")
-            water_region, n_water_molecules = self._calculate_water_region(metal_atoms)
-            
-            # Step 3: Generate water layer using Packmol
-            if self.logger:
-                self.logger.step("Generating water layer with Packmol")
-            water_atoms = self._generate_water_layer(water_region, n_water_molecules)
-            
-            # Step 4: Add hydroxyl groups if requested
-            if self.parameters.add_surface_hydroxyl:
+            # Use temporary directory for intermediate files
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Build metal surface
+                self._build_metal_surface()
+
+                # Generate water configuration
+                self._generate_water(tmpdir)
+
+                # Combine metal and water
+                self._combine_metal_water()
+
+                # Adjust vacuum
+                self._adjust_vacuum()
+
+                # Write output file
+                output_path = self._write_output()
+
                 if self.logger:
-                    self.logger.step("Adding surface hydroxyl groups")
-                self._add_surface_hydroxyl_groups(metal_atoms)
-            
-            # Step 5: Combine metal and water
-            if self.logger:
-                self.logger.step("Combining metal and water structures")
-            combined_atoms = self._combine_structures(metal_atoms, water_atoms)
-            
-            # Step 6: Apply constraints and final adjustments
-            if self.parameters.fix_bottom_layers > 0:
-                if self.logger:
-                    self.logger.step(f"Fixing bottom {self.parameters.fix_bottom_layers} metal layers")
-                self._add_constraints(combined_atoms, len(metal_atoms))
-            
-            # Step 7: Center system if requested
-            if self.parameters.center_system:
-                if self.logger:
-                    self.logger.step("Centering system in unit cell")
-                combined_atoms.center()
-            
-            # Step 8: Write output file
-            output_path = Path(self.parameters.output_file)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            output_format = self._determine_output_format(output_path)
-            
-            if self.logger:
-                self.logger.step(f"Writing structure to {output_format.upper()} format")
-            
-            self._write_structure(combined_atoms, output_path, output_format)
-            
-            if self.logger:
-                self.logger.success("Metal-water interface generated successfully")
-                self.logger.info(f"Output file: {output_path}")
-                self.logger.info(f"Total atoms: {len(combined_atoms)}")
-                self.logger.info(f"Metal atoms: {len(metal_atoms)}")
-                self.logger.info(f"Water molecules: {n_water_molecules}")
-                self.logger.info(f"Cell dimensions: {combined_atoms.cell.cellpar()[:3]}")
-            
-            return str(output_path)
-            
+                    self.logger.info(f"Successfully generated: {output_path}")
+
+                return str(output_path)
+
         except Exception as e:
+            error_msg = f"Failed to generate metal-water interface: {e}"
             if self.logger:
-                self.logger.error(f"Failed to generate metal-water interface: {str(e)}")
-            raise RuntimeError(f"Metal-water interface generation failed: {str(e)}")
-    
-    def _create_metal_surface(self) -> Atoms:
-        """Create the metal surface using ASE."""
-        miller = self.parameters.miller_index
-        size = self.parameters.metal_size
-        layers = self.parameters.n_metal_layers
-        
-        # Use specific builder if available
-        if miller in self.SURFACE_BUILDERS:
-            builder_func = self.SURFACE_BUILDERS[miller]
-            metal_atoms = builder_func(
-                symbol=self.parameters.metal,
-                size=(*size, layers),
-                a=self.lattice_constant,
-                vacuum=0.0
-            )
-        else:
-            # Use general surface builder
-            bulk_atoms = bulk(
-                self.parameters.metal,
-                crystalstructure='fcc',
-                a=self.lattice_constant
-            )
-            metal_atoms = surface(bulk_atoms, miller, layers, vacuum=0.0)
-            if size != (1, 1):
-                metal_atoms = metal_atoms.repeat((*size, 1))
-        
+                self.logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+    def _build_metal_surface(self) -> None:
+        """Build the FCC(111) metal surface."""
+        nx, ny, nz = self.parameters.metal_size
+
         if self.logger:
-            self.logger.info(f"Created {miller} metal surface with {len(metal_atoms)} atoms")
-        
-        return metal_atoms
-    
-    def _calculate_water_region(self, metal_atoms: Atoms) -> Tuple[Dict[str, float], int]:
-        """Calculate water region bounds and number of molecules."""
-        metal_positions = metal_atoms.get_positions()
-        metal_cell = metal_atoms.get_cell()
-        
-        # Find top of metal surface
-        z_max_metal = np.max(metal_positions[:, 2])
-        
-        # Calculate water region bounds
-        z_min_water = z_max_metal + self.parameters.metal_water_gap
-        
-        if self.parameters.water_thickness is not None:
-            z_max_water = z_min_water + self.parameters.water_thickness
-        else:
-            # Calculate from number of molecules if thickness not specified
-            z_max_water = z_min_water + 20.0  # Default thickness
-        
-        # Get lateral dimensions from metal cell
-        x_size = metal_cell[0, 0]
-        y_size = metal_cell[1, 1]
-        
-        # Apply surface coverage
-        if self.parameters.surface_coverage < 1.0:
-            # Center the water region if partial coverage
-            coverage_x = x_size * np.sqrt(self.parameters.surface_coverage)
-            coverage_y = y_size * np.sqrt(self.parameters.surface_coverage)
-            x_center = x_size / 2
-            y_center = y_size / 2
-            
-            water_region = {
-                'x_min': x_center - coverage_x/2,
-                'x_max': x_center + coverage_x/2,
-                'y_min': y_center - coverage_y/2,
-                'y_max': y_center + coverage_y/2,
-                'z_min': z_min_water,
-                'z_max': z_max_water
-            }
-        else:
-            water_region = {
-                'x_min': 0.0,
-                'x_max': x_size,
-                'y_min': 0.0,
-                'y_max': y_size,
-                'z_min': z_min_water,
-                'z_max': z_max_water
-            }
-        
-        # Calculate number of water molecules
-        if self.parameters.n_water_molecules is not None:
-            n_water_molecules = self.parameters.n_water_molecules
-        else:
-            # Calculate from density and volume
-            water_volume = ((water_region['x_max'] - water_region['x_min']) * 
-                          (water_region['y_max'] - water_region['y_min']) * 
-                          (water_region['z_max'] - water_region['z_min']))
-            
-            # Convert to cm³
-            water_volume_cm3 = water_volume * 1e-24
-            
-            # Get water density
-            if self.parameters.water_density is not None:
-                density = self.parameters.water_density
-            else:
-                density = get_water_density(self.parameters.water_model)
-            
-            # Calculate number of molecules
-            water_molar_mass = 18.015  # g/mol
-            na = 6.022e23
-            mass_g = density * water_volume_cm3
-            moles = mass_g / water_molar_mass
-            n_water_molecules = max(10, int(moles * na))
-        
-        if self.logger:
-            self.logger.info(f"Water region: {water_region['x_max']:.1f} x {water_region['y_max']:.1f} x {water_region['z_max']-water_region['z_min']:.1f} Å")
-            self.logger.info(f"Target water molecules: {n_water_molecules}")
-        
-        return water_region, n_water_molecules
-    
-    def _generate_water_layer(self, water_region: Dict[str, float], n_molecules: int) -> Atoms:
-        """Generate water layer using Packmol."""
-        # Create temporary directory for Packmol files
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            
-            # Create water molecule template
-            water_xyz = temp_path / "water.xyz"
-            create_water_xyz(self.parameters.water_model, str(water_xyz))
-            
-            # Create Packmol input file
-            input_file = temp_path / "packmol.inp"
-            output_file = temp_path / "water_output.xyz"
-            
-            self._create_packmol_input(
-                input_file, water_xyz, output_file,
-                water_region, n_molecules
-            )
-            
-            # Run Packmol
-            self._run_packmol(input_file, temp_path)
-            
-            # Read generated water structure
-            if output_file.exists():
-                water_atoms = read(str(output_file))
-                if self.logger:
-                    self.logger.info(f"Generated {len(water_atoms)} water atoms ({len(water_atoms)//3} molecules)")
-                return water_atoms
-            else:
-                raise RuntimeError("Packmol failed to generate water structure")
-    
-    def _create_packmol_input(self, input_file: Path, water_xyz: Path, 
-                             output_file: Path, water_region: Dict[str, float], 
-                             n_molecules: int) -> None:
-        """Create Packmol input file for water layer."""
-        with open(input_file, 'w') as f:
-            f.write(f"tolerance {self.parameters.packmol_tolerance}\n")
-            f.write("filetype xyz\n")
-            f.write(f"output {output_file.name}\n")
-            f.write(f"seed {self.parameters.packmol_seed}\n")
-            f.write("\n")
-            
-            f.write(f"structure {water_xyz.name}\n")
-            f.write(f"  number {n_molecules}\n")
-            f.write(f"  inside box {water_region['x_min']:.6f} {water_region['y_min']:.6f} {water_region['z_min']:.6f} ")
-            f.write(f"{water_region['x_max']:.6f} {water_region['y_max']:.6f} {water_region['z_max']:.6f}\n")
-            f.write("end structure\n")
-    
-    def _run_packmol(self, input_file: Path, work_dir: Path) -> None:
-        """Run Packmol with the given input file."""
-        try:
-            if self.logger:
-                self.logger.debug(f"Executing: {self.parameters.packmol_executable}")
-            
-            result = subprocess.run(
-                [self.parameters.packmol_executable],
-                stdin=open(input_file, 'r'),
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=str(work_dir)
-            )
-            
-            if self.logger:
-                self.logger.success("Packmol execution completed successfully")
-                
-        except subprocess.CalledProcessError as e:
-            if self.logger:
-                self.logger.error(f"Packmol failed with return code {e.returncode}")
-            raise RuntimeError(f"Packmol failed: {e.stderr}")
-        except FileNotFoundError:
-            raise RuntimeError(
-                f"Packmol executable '{self.parameters.packmol_executable}' not found. "
-                "Please install packmol or provide correct path."
-            )
-    
-    def _add_surface_hydroxyl_groups(self, metal_atoms: Atoms) -> None:
-        """Add hydroxyl groups to metal surface atoms."""
-        metal_positions = metal_atoms.get_positions()
-        z_coords = metal_positions[:, 2]
-        
-        # Find surface atoms (top layer)
-        z_max = np.max(z_coords)
-        surface_mask = z_coords > z_max - 1.0
-        surface_indices = np.where(surface_mask)[0]
-        
-        # Select atoms for hydroxylation based on coverage
-        n_hydroxyl = max(1, int(len(surface_indices) * self.parameters.hydroxyl_coverage))
-        selected_indices = np.random.choice(surface_indices, n_hydroxyl, replace=False)
-        
-        # Add OH groups
-        oh_height = 2.0  # Typical M-OH bond length
-        for idx in selected_indices:
-            metal_pos = metal_positions[idx]
-            
-            # Add oxygen
-            o_pos = metal_pos.copy()
-            o_pos[2] += oh_height
-            o_atom = Atoms('O', positions=[o_pos])
-            metal_atoms.extend(o_atom)
-            
-            # Add hydrogen
-            h_pos = o_pos.copy()
-            h_pos[2] += 1.0  # O-H bond length
-            h_pos[0] += 0.5  # Slight offset
-            h_atom = Atoms('H', positions=[h_pos])
-            metal_atoms.extend(h_atom)
-        
-        if self.logger:
-            self.logger.info(f"Added {n_hydroxyl} OH groups to surface")
-    
-    def _combine_structures(self, metal_atoms: Atoms, water_atoms: Atoms) -> Atoms:
-        """Combine metal surface and water layer."""
-        # Calculate total system size
-        metal_cell = metal_atoms.get_cell()
-        metal_positions = metal_atoms.get_positions()
-        water_positions = water_atoms.get_positions()
-        
-        # Find bounds
-        z_min = np.min(metal_positions[:, 2])
-        z_max_water = np.max(water_positions[:, 2])
-        total_z = z_max_water - z_min + self.parameters.vacuum_above_water
-        
-        # Create combined structure
-        combined_atoms = metal_atoms.copy()
-        combined_atoms.extend(water_atoms)
-        
-        # Set new cell dimensions
-        new_cell = metal_cell.copy()
-        new_cell[2, 2] = total_z
-        combined_atoms.set_cell(new_cell, scale_atoms=False)
-        
-        return combined_atoms
-    
-    def _add_constraints(self, atoms: Atoms, n_metal_atoms: int) -> None:
-        """Add constraints to fix bottom metal layers."""
-        metal_positions = atoms.get_positions()[:n_metal_atoms]
-        z_coords = metal_positions[:, 2]
-        
-        # Sort z-coordinates to find bottom layers
-        unique_z = np.unique(np.round(z_coords, 3))
-        unique_z.sort()
-        
-        if len(unique_z) < self.parameters.fix_bottom_layers:
-            if self.logger:
-                self.logger.warning(f"Cannot fix {self.parameters.fix_bottom_layers} layers, only {len(unique_z)} available")
-            return
-        
-        # Find atoms in bottom layers to fix
-        fixed_indices = []
-        for i in range(self.parameters.fix_bottom_layers):
-            layer_z = unique_z[i]
-            layer_mask = np.abs(z_coords - layer_z) < 0.1
-            fixed_indices.extend(np.where(layer_mask)[0])
-        
-        if fixed_indices:
-            constraint = FixAtoms(indices=fixed_indices)
-            atoms.set_constraint(constraint)
-            
-            if self.logger:
-                self.logger.info(f"Fixed {len(fixed_indices)} metal atoms in bottom layers")
-    
-    def _determine_output_format(self, output_path: Path) -> str:
-        """Determine output format from file extension or parameter."""
-        if self.parameters.output_format:
-            return self.parameters.output_format.lower()
-        
-        suffix = output_path.suffix.lower()
-        format_map = {
-            ".xyz": "xyz",
-            ".vasp": "vasp",
-            ".lammps": "lammps-data",
-            ".data": "lammps-data"
+            self.logger.info(f"Creating {self.parameters.metal}(111) surface")
+            self.logger.info(f"  Dimensions: {nx}x{ny} unit cells, {nz} layers")
+
+        # Build the surface using ASE's fcc111 function
+        # orthogonal=True ensures LAMMPS compatibility
+        self.metal_slab = fcc111(
+            self.parameters.metal,
+            size=(nx, ny, nz),
+            a=self.lattice_constant,
+            orthogonal=True,
+            vacuum=0.0,
+            periodic=True
+        )
+
+        # Store box dimensions
+        cell = self.metal_slab.get_cell()
+        self.box_dimensions = {
+            'x': cell[0, 0],
+            'y': cell[1, 1],
+            'z': cell[2, 2]
         }
-        
-        return format_map.get(suffix, "xyz")
-    
-    def _write_structure(self, atoms: Atoms, output_path: Path, output_format: str) -> None:
-        """Write structure to file in specified format."""
-        if output_format == "lammps-data":
-            self._write_lammps_data(atoms, output_path)
+
+        if self.logger:
+            self.logger.info(f"Created surface with {len(self.metal_slab)} atoms")
+            self.logger.info(f"Box dimensions: {self.box_dimensions['x']:.2f} x {self.box_dimensions['y']:.2f} x {self.box_dimensions['z']:.2f} Å")
+
+        # Apply constraints to fix bottom layers if requested
+        if self.parameters.fix_bottom_layers > 0:
+            self._apply_constraints()
+
+    def _apply_constraints(self) -> None:
+        """Apply constraints to fix bottom metal layers."""
+        positions = self.metal_slab.get_positions()
+        z_positions = positions[:, 2]
+
+        # Find unique z-layers
+        z_unique = np.unique(np.round(z_positions, decimals=2))
+        z_unique.sort()
+
+        n_fix = min(self.parameters.fix_bottom_layers, len(z_unique) - 1)
+
+        # Get z-threshold for fixed layers
+        z_threshold = z_unique[n_fix] if n_fix < len(z_unique) else z_unique[-1]
+
+        # Create mask for fixed atoms
+        fixed_mask = z_positions < z_threshold + 0.01
+
+        # Apply constraints
+        constraint = FixAtoms(mask=fixed_mask)
+        self.metal_slab.set_constraint(constraint)
+
+        n_fixed = np.sum(fixed_mask)
+        if self.logger:
+            self.logger.info(f"Fixed {n_fixed} atoms in bottom {n_fix} layers")
+
+    def _calculate_water_height(self) -> float:
+        """
+        Calculate water box height to achieve target density.
+
+        Returns:
+            Water box height in Angstroms
+        """
+        # Water molecular weight: 18.015 g/mol
+        water_mw = 18.015  # g/mol
+        avogadro = 6.022e23  # molecules/mol
+
+        # Convert density to g/Å³
+        density_g_A3 = self.parameters.water_density * 1e-24  # g/cm³ to g/Å³
+
+        # Calculate mass of water
+        mass_g = self.parameters.n_water_molecules * water_mw / avogadro
+
+        # Calculate required volume
+        volume_A3 = mass_g / density_g_A3
+
+        # Calculate height from volume
+        water_height = volume_A3 / (self.box_dimensions['x'] * self.box_dimensions['y'])
+
+        if self.logger:
+            self.logger.info(
+                f"Water box height for {self.parameters.n_water_molecules} molecules "
+                f"at {self.parameters.water_density} g/cm³: {water_height:.2f} Å"
+            )
+
+        return water_height
+
+    def _generate_water(self, tmpdir: str) -> None:
+        """
+        Generate water configuration using PACKMOL.
+
+        Args:
+            tmpdir: Temporary directory for intermediate files
+        """
+        if self.logger:
+            self.logger.info("Generating water configuration with PACKMOL")
+
+        # Calculate water box dimensions
+        metal_cell_z = self.metal_slab.get_cell()[2, 2]
+        water_height = self._calculate_water_height()
+
+        # Set margins for water box
+        margin_xy = 1.0  # margin from box edges in x and y
+        margin_z_bottom = 1.0  # additional margin from metal top
+        margin_z_top = 1.0  # margin from water top to boundary
+
+        water_x = self.box_dimensions['x'] - 2 * margin_xy
+        water_y = self.box_dimensions['y'] - 2 * margin_xy
+        water_z_min = metal_cell_z + self.parameters.gap_above_metal + margin_z_bottom
+        water_z_max = metal_cell_z + self.parameters.gap_above_metal + water_height - margin_z_top
+
+        # Create water molecule file
+        water_xyz_path = os.path.join(tmpdir, 'water_molecule.xyz')
+        self._create_water_molecule_file(water_xyz_path)
+
+        # Create PACKMOL input
+        packmol_input_path = os.path.join(tmpdir, 'pack_water.inp')
+        water_output_path = os.path.join(tmpdir, 'water_box.xyz')
+
+        packmol_input = f"""
+tolerance {self.parameters.packmol_tolerance}
+filetype xyz
+output {water_output_path}
+seed {self.parameters.seed}
+
+structure {water_xyz_path}
+  number {self.parameters.n_water_molecules}
+  inside box {margin_xy} {margin_xy} {water_z_min} {water_x + margin_xy} {water_y + margin_xy} {water_z_max}
+end structure
+"""
+
+        with open(packmol_input_path, 'w') as f:
+            f.write(packmol_input)
+
+        if self.logger:
+            self.logger.info(f"Water box: x=[{margin_xy:.1f}, {water_x + margin_xy:.1f}], "
+                           f"y=[{margin_xy:.1f}, {water_y + margin_xy:.1f}], "
+                           f"z=[{water_z_min:.2f}, {water_z_max:.2f}]")
+
+        # Run PACKMOL
+        self._run_packmol(packmol_input_path, water_output_path)
+
+    def _create_water_molecule_file(self, filepath: str) -> None:
+        """
+        Create water molecule XYZ file based on water model.
+
+        Args:
+            filepath: Path to write the water molecule file
+        """
+        # Get water model geometry
+        model_key = self.parameters.water_model.replace("/", "")  # Remove slash from SPC/E
+        if model_key in WATER_MODELS:
+            geometry = WATER_MODELS[model_key]["geometry"]
+            water_xyz = f"""3
+Water molecule {self.parameters.water_model}
+O    {geometry['O'][0]:.4f}    {geometry['O'][1]:.4f}    {geometry['O'][2]:.4f}
+H    {geometry['H1'][0]:.4f}   {geometry['H1'][1]:.4f}   {geometry['H1'][2]:.4f}
+H    {geometry['H2'][0]:.4f}   {geometry['H2'][1]:.4f}   {geometry['H2'][2]:.4f}
+"""
         else:
-            write(str(output_path), atoms, format=output_format)
-    
-    def _write_lammps_data(self, atoms: Atoms, output_path: Path) -> None:
-        """Write LAMMPS data file for metal-water system."""
-        positions = atoms.get_positions()
-        symbols = atoms.get_chemical_symbols()
-        
-        # Get unique elements and assign types
-        unique_elements = list(dict.fromkeys(symbols))  # Preserve order
-        element_to_type = {elem: i+1 for i, elem in enumerate(unique_elements)}
-        
-        # Get masses
-        from ase.data import atomic_masses
-        masses = {elem: atomic_masses[atomic_numbers[elem]] for elem in unique_elements}
-        
-        # Count molecules and bonds (for water)
-        water_model = get_water_model(self.parameters.water_model)
-        atoms_per_water = len(water_model["atoms"])
-        n_water_molecules = symbols.count('O')  # Assuming O only from water
-        n_bonds = n_water_molecules * 2  # 2 O-H bonds per water
-        n_angles = n_water_molecules  # 1 H-O-H angle per water
-        
+            # Fallback to SPC/E geometry
+            water_xyz = """3
+Water molecule SPC/E
+O    0.0000    0.0000    0.0000
+H    0.8164    0.0000    0.5773
+H   -0.8164    0.0000    0.5773
+"""
+
+        with open(filepath, 'w') as f:
+            f.write(water_xyz)
+
+    def _run_packmol(self, input_path: str, output_path: str) -> None:
+        """
+        Run PACKMOL to generate water configuration.
+
+        Args:
+            input_path: Path to PACKMOL input file
+            output_path: Path where PACKMOL will write the output
+
+        Raises:
+            RuntimeError: If PACKMOL fails
+        """
+        try:
+            # Run PACKMOL using shell with input redirection
+            cmd = f'{self.parameters.packmol_executable} < {input_path}'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+            if result.returncode == 0:
+                if self.logger:
+                    self.logger.info("PACKMOL completed successfully")
+                # Read the generated water configuration
+                self.water_atoms = read(output_path)
+            else:
+                raise RuntimeError(f"PACKMOL failed: {result.stderr}")
+
+        except Exception as e:
+            raise RuntimeError(f"Error running PACKMOL: {e}")
+
+    def _combine_metal_water(self) -> None:
+        """Combine metal slab and water molecules."""
+        if self.metal_slab is None or self.water_atoms is None:
+            raise ValueError("Both metal slab and water must be generated first")
+
+        # Combine atoms
+        self.combined_system = self.metal_slab + self.water_atoms
+
+        # Set the cell from metal slab (will adjust z later)
+        cell = self.metal_slab.get_cell()
+        self.combined_system.set_cell(cell)
+        self.combined_system.set_pbc([True, True, True])
+
+        n_water = len(self.water_atoms) // 3
+        if self.logger:
+            self.logger.info(
+                f"Combined system: {len(self.metal_slab)} {self.parameters.metal} atoms + "
+                f"{len(self.water_atoms)} atoms ({n_water} water molecules)"
+            )
+
+    def _adjust_vacuum(self) -> None:
+        """Adjust the cell to have exact vacuum above the water layer."""
+        if self.combined_system is None:
+            raise ValueError("Combine metal and water first")
+
+        # Get all positions
+        positions = self.combined_system.get_positions()
+        symbols = self.combined_system.get_chemical_symbols()
+
+        # Find the top of water
+        water_positions = positions[np.array(symbols) != self.parameters.metal]
+        if len(water_positions) > 0:
+            water_top = np.max(water_positions[:, 2])
+        else:
+            water_top = np.max(positions[:, 2])
+
+        # Update cell z-dimension
+        cell = self.combined_system.get_cell()
+        total_height = water_top + self.parameters.vacuum_above_water
+        cell[2, 2] = total_height
+        self.combined_system.set_cell(cell)
+
+        if self.logger:
+            self.logger.info(f"Adjusted cell z-dimension to {total_height:.2f} Å")
+            self.logger.info(f"  Vacuum above water: {self.parameters.vacuum_above_water:.2f} Å")
+
+    def _write_output(self) -> Path:
+        """
+        Write the combined system to the output file.
+
+        Returns:
+            Path to the output file
+        """
+        output_path = Path(self.parameters.output_file)
+
+        # Create parent directories if they don't exist
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Determine output format
+        output_format = self._determine_format()
+
+        if self.logger:
+            self.logger.info(f"Writing output in {output_format} format to: {output_path}")
+
+        if output_format == "lammps":
+            self._write_lammps(output_path)
+        elif output_format in ["vasp", "poscar"]:
+            self._write_poscar(output_path)
+        else:  # xyz
+            write(str(output_path), self.combined_system, format="xyz")
+
+        return output_path
+
+    def _determine_format(self) -> str:
+        """
+        Determine the output format based on file extension or explicit format.
+
+        Returns:
+            Format string ("xyz", "vasp", "poscar", or "lammps")
+        """
+        if self.parameters.output_format:
+            format_map = {
+                "vasp": "vasp",
+                "poscar": "poscar",
+                "lammps": "lammps",
+                "data": "lammps",
+                "xyz": "xyz"
+            }
+            return format_map.get(self.parameters.output_format.lower(), "lammps")
+
+        # Infer from file extension
+        output_path = Path(self.parameters.output_file)
+        suffix = output_path.suffix.lower()
+
+        if suffix in [".vasp", ".poscar"] or output_path.name.upper() == "POSCAR":
+            return "poscar"
+        elif suffix in [".lammps", ".data"]:
+            return "lammps"
+        elif suffix == ".xyz":
+            return "xyz"
+        else:
+            return "lammps"  # Default for metal-water
+
+    def _write_poscar(self, output_path: Path) -> None:
+        """
+        Write VASP POSCAR format with proper element grouping.
+
+        Args:
+            output_path: Output file path
+        """
+        # Get positions and cell
+        positions = self.combined_system.get_positions()
+        cell = self.combined_system.get_cell()
+        symbols = self.combined_system.get_chemical_symbols()
+
+        # Count atoms by type
+        n_metal = symbols.count(self.parameters.metal)
+        n_o = symbols.count('O')
+        n_h = symbols.count('H')
+
+        # Sort atoms by element type (Metal, O, H)
+        sorted_positions = []
+
+        # First add metal atoms
+        for i, sym in enumerate(symbols):
+            if sym == self.parameters.metal:
+                sorted_positions.append(positions[i])
+
+        # Then add oxygen atoms
+        for i, sym in enumerate(symbols):
+            if sym == 'O':
+                sorted_positions.append(positions[i])
+
+        # Finally add hydrogen atoms
+        for i, sym in enumerate(symbols):
+            if sym == 'H':
+                sorted_positions.append(positions[i])
+
+        sorted_positions = np.array(sorted_positions)
+
+        # Write POSCAR file
         with open(output_path, 'w') as f:
-            f.write(f"# LAMMPS data file for {self.parameters.metal}-water interface\n")
-            f.write(f"# Generated by mlip-struct-gen\n")
-            f.write(f"# Miller index: {self.parameters.miller_index}\n")
-            f.write(f"# Metal-water gap: {self.parameters.metal_water_gap} Å\n\n")
-            
+            # Title
+            f.write(f"{self.parameters.metal}(111) surface with {n_o} water molecules\n")
+
+            # Scaling factor
+            f.write("1.0\n")
+
+            # Cell vectors
+            for i in range(3):
+                f.write(f"{cell[i,0]:20.16f} {cell[i,1]:20.16f} {cell[i,2]:20.16f}\n")
+
+            # Element symbols
+            f.write(f"{self.parameters.metal:4s} O    H   \n")
+
+            # Number of each element
+            f.write(f"{n_metal:4d} {n_o:4d} {n_h:4d}\n")
+
+            # Coordinate type
+            f.write("Cartesian\n")
+
+            # Atomic positions
+            for pos in sorted_positions:
+                f.write(f"{pos[0]:20.16f} {pos[1]:20.16f} {pos[2]:20.16f}\n")
+
+    def _write_lammps(self, output_path: Path) -> None:
+        """
+        Write LAMMPS data file format with water topology.
+
+        Args:
+            output_path: Output file path
+        """
+        # Get atomic data
+        positions = self.combined_system.get_positions()
+        cell = self.combined_system.get_cell()
+        symbols = self.combined_system.get_chemical_symbols()
+
+        # Count atoms by type
+        n_metal = symbols.count(self.parameters.metal)
+        n_o = symbols.count('O')
+        n_h = symbols.count('H')
+        n_water = n_o
+
+        # Total counts
+        n_atoms = len(positions)
+        n_bonds = n_water * 2  # 2 O-H bonds per water
+        n_angles = n_water * 1  # 1 H-O-H angle per water
+
+        # Get atomic masses
+        from ase.data import atomic_masses, atomic_numbers
+        metal_number = atomic_numbers[self.parameters.metal]
+        metal_mass = atomic_masses[metal_number]
+
+        # Get water charges based on model
+        model_key = self.parameters.water_model.replace("/", "")
+        if model_key in WATER_MODELS:
+            o_charge = WATER_MODELS[model_key]["charges"]["O"]
+            h_charge = WATER_MODELS[model_key]["charges"]["H"]
+        else:
+            # Default to SPC/E charges
+            o_charge = -0.8476
+            h_charge = 0.4238
+
+        with open(output_path, 'w') as f:
+            # Header
+            f.write(f"LAMMPS data file for {self.parameters.metal}(111) surface with {n_water} {self.parameters.water_model} water molecules\n\n")
+
             # Counts
-            f.write(f"{len(atoms)} atoms\n")
-            if n_bonds > 0:
-                f.write(f"{n_bonds} bonds\n")
-            if n_angles > 0:
-                f.write(f"{n_angles} angles\n")
-            f.write(f"{len(unique_elements)} atom types\n")
-            if n_bonds > 0:
-                f.write("1 bond types\n")
-            if n_angles > 0:
-                f.write("1 angle types\n")
-            f.write("\n")
-            
-            # Box bounds
-            cell = atoms.cell
-            f.write(f"0.0 {cell[0, 0]:.6f} xlo xhi\n")
-            f.write(f"0.0 {cell[1, 1]:.6f} ylo yhi\n")
-            f.write(f"0.0 {cell[2, 2]:.6f} zlo zhi\n\n")
-            
+            f.write(f"{n_atoms} atoms\n")
+            f.write(f"{n_bonds} bonds\n")
+            f.write(f"{n_angles} angles\n")
+            f.write("0 dihedrals\n")
+            f.write("0 impropers\n\n")
+
+            # Types
+            f.write("3 atom types\n")
+            f.write("1 bond types\n")
+            f.write("1 angle types\n\n")
+
+            # Box dimensions
+            f.write(f"0.0 {cell[0,0]:.6f} xlo xhi\n")
+            f.write(f"0.0 {cell[1,1]:.6f} ylo yhi\n")
+            f.write(f"0.0 {cell[2,2]:.6f} zlo zhi\n\n")
+
             # Masses
             f.write("Masses\n\n")
-            for elem, type_id in element_to_type.items():
-                f.write(f"{type_id} {masses[elem]:.4f}  # {elem}\n")
-            f.write("\n")
-            
+            f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
+            f.write("2 15.9994  # O\n")
+            f.write("3 1.00794  # H\n\n")
+
             # Atoms
-            f.write("Atoms # atomic\n\n")
-            for i, (symbol, pos) in enumerate(zip(symbols, positions)):
-                type_id = element_to_type[symbol]
-                f.write(f"{i+1:6d} {type_id:6d} {pos[0]:12.6f} {pos[1]:12.6f} {pos[2]:12.6f}\n")
-        
-        if self.logger:
-            self.logger.info(f"Written LAMMPS data file with {len(unique_elements)} atom types")
+            f.write("Atoms\n\n")
+            atom_id = 1
+            mol_id = 1
+
+            # Track oxygen and hydrogen atom IDs for bonds/angles
+            o_atoms = []
+            h_atoms = []
+
+            # Write metal atoms first (molecule ID 1)
+            for i in range(len(symbols)):
+                if symbols[i] == self.parameters.metal:
+                    f.write(f"{atom_id} {mol_id} 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    atom_id += 1
+
+            # Write water molecules (molecule IDs start from 2)
+            mol_id = 2
+            for i in range(len(symbols)):
+                if symbols[i] == 'O':
+                    o_atoms.append(atom_id)
+                    f.write(f"{atom_id} {mol_id} 2 {o_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    atom_id += 1
+                elif symbols[i] == 'H':
+                    h_atoms.append(atom_id)
+                    f.write(f"{atom_id} {mol_id} 3 {h_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    atom_id += 1
+                    # Increment molecule ID after every 3 water atoms (O + 2H)
+                    if len(h_atoms) % 2 == 0:
+                        mol_id += 1
+
+            # Bonds
+            if n_bonds > 0:
+                f.write("\nBonds\n\n")
+                bond_id = 1
+                for i, o_id in enumerate(o_atoms):
+                    # Each oxygen bonds to next two hydrogens
+                    h1_id = h_atoms[2*i]
+                    h2_id = h_atoms[2*i + 1]
+                    f.write(f"{bond_id} 1 {o_id} {h1_id}\n")
+                    bond_id += 1
+                    f.write(f"{bond_id} 1 {o_id} {h2_id}\n")
+                    bond_id += 1
+
+            # Angles
+            if n_angles > 0:
+                f.write("\nAngles\n\n")
+                angle_id = 1
+                for i, o_id in enumerate(o_atoms):
+                    h1_id = h_atoms[2*i]
+                    h2_id = h_atoms[2*i + 1]
+                    f.write(f"{angle_id} 1 {h1_id} {o_id} {h2_id}\n")
+                    angle_id += 1
+
+    def run(self, save_artifacts: bool = False) -> str:
+        """
+        Run the interface generation (compatibility method).
+
+        Args:
+            save_artifacts: Whether to save intermediate files (not used)
+
+        Returns:
+            Path to the output file
+        """
+        return self.generate()

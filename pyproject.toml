@@ -21,6 +21,9 @@ dependencies = [
 [project.scripts]
 mlip-struct-gen = "mlip_struct_gen.cli.main:main"
 mlip-water-box = "mlip_struct_gen.cli.generators.water_box:main"
+mlip-salt-water-box = "mlip_struct_gen.cli.generators.salt_water_box:main"
+mlip-metal-surface = "mlip_struct_gen.cli.generators.metal_surface:main"
+mlip-metal-water = "mlip_struct_gen.cli.generators.metal_water:main"
 
 [project.optional-dependencies]
 dev = [

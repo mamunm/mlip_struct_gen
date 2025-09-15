@@ -1,314 +1,237 @@
-"""Parameter validation for metal-water interface generation."""
+"""Validation for metal-water interface generation parameters."""
 
-import numpy as np
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Set
+import shutil
 
-if TYPE_CHECKING:
-    from .input_parameters import MetalWaterParameters
-
-try:
-    from ase.data import atomic_numbers
-    ASE_AVAILABLE = True
-except ImportError:
-    ASE_AVAILABLE = False
-
-from ..templates.water_models import get_water_model
+from .input_parameters import MetalWaterParameters
 
 
-def validate_parameters(parameters: "MetalWaterParameters") -> None:
+# Supported FCC metals with experimental lattice constants (Angstroms)
+SUPPORTED_METALS: Set[str] = {
+    "Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt",
+    "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"
+}
+
+# Default lattice constants for common FCC metals (Angstroms)
+DEFAULT_LATTICE_CONSTANTS = {
+    "Al": 4.050,
+    "Au": 4.078,
+    "Ag": 4.085,
+    "Cu": 3.615,
+    "Ni": 3.524,
+    "Pd": 3.890,
+    "Pt": 3.924,
+    "Pb": 4.950,
+    "Rh": 3.803,
+    "Ir": 3.839,
+    "Ca": 5.588,
+    "Sr": 6.085,
+    "Yb": 5.485
+}
+
+# Water model parameters
+WATER_MODELS = {
+    "SPC/E": {
+        "OH_distance": 1.0,  # Angstroms
+        "HOH_angle": 109.47,  # degrees
+    },
+    "TIP3P": {
+        "OH_distance": 0.9572,  # Angstroms
+        "HOH_angle": 104.52,  # degrees
+    },
+    "TIP4P": {
+        "OH_distance": 0.9572,  # Angstroms
+        "HOH_angle": 104.52,  # degrees
+    },
+}
+
+
+def validate_parameters(params: MetalWaterParameters) -> None:
     """
-    Comprehensive parameter validation and normalization.
-    
+    Validate metal-water interface generation parameters.
+
     Args:
-        parameters: Parameters to validate and normalize
-        
+        params: Parameters to validate
+
     Raises:
         ValueError: If any parameter is invalid
-        TypeError: If parameter types are incorrect
-        ImportError: If ASE is not available
+        RuntimeError: If required external tools are missing
     """
-    if not ASE_AVAILABLE:
-        raise ImportError(
-            "ASE (Atomic Simulation Environment) is required for metal surface generation. "
-            "Install with: pip install ase"
+    # Check for PACKMOL availability
+    if not shutil.which(params.packmol_executable):
+        raise RuntimeError(
+            f"PACKMOL executable '{params.packmol_executable}' not found. "
+            f"Please install PACKMOL and ensure it's in your PATH, "
+            f"or specify the full path to the executable."
         )
-    
-    # Metal validation
-    if not isinstance(parameters.metal, str):
-        raise TypeError("metal must be a string")
-    
-    if not parameters.metal.strip():
-        raise ValueError("metal cannot be empty")
-    
-    # Check if metal is a valid element
-    try:
-        atomic_number = atomic_numbers[parameters.metal]
-    except KeyError:
-        raise ValueError(f"Invalid metal element '{parameters.metal}'. Must be a valid element symbol.")
-    
-    # Miller index validation
-    if not isinstance(parameters.miller_index, (tuple, list)):
-        raise TypeError("miller_index must be a tuple or list")
-    
-    if len(parameters.miller_index) != 3:
-        raise ValueError("miller_index must have exactly 3 integers (h, k, l)")
-    
-    if not all(isinstance(x, int) for x in parameters.miller_index):
-        raise TypeError("miller_index must contain only integers")
-    
-    if all(x == 0 for x in parameters.miller_index):
-        raise ValueError("miller_index cannot be (0, 0, 0)")
-    
-    # Normalize miller index to tuple
-    parameters.miller_index = tuple(parameters.miller_index)
-    
-    # Metal size validation
-    if not isinstance(parameters.metal_size, (tuple, list)):
-        raise TypeError("metal_size must be a tuple or list")
-    
-    if len(parameters.metal_size) != 2:
-        raise ValueError("metal_size must have exactly 2 integers (nx, ny)")
-    
-    if not all(isinstance(x, int) for x in parameters.metal_size):
-        raise TypeError("metal_size must contain only integers")
-    
-    if not all(x >= 2 for x in parameters.metal_size):
-        raise ValueError("metal_size must contain integers >= 2")
-    
-    if any(x > 10 for x in parameters.metal_size):
-        raise ValueError("metal_size too large (>10). Consider computational cost.")
-    
-    # Normalize size to tuple
-    parameters.metal_size = tuple(parameters.metal_size)
-    
-    # Number of metal layers validation
-    if not isinstance(parameters.n_metal_layers, int):
-        raise TypeError("n_metal_layers must be an integer")
-    
-    if parameters.n_metal_layers < 3:
-        raise ValueError("n_metal_layers must be at least 3 for proper surface representation")
-    
-    if parameters.n_metal_layers > 10:
-        raise ValueError("n_metal_layers too large (>10). Consider computational cost.")
-    
-    # Output file validation
-    if not isinstance(parameters.output_file, str):
-        raise TypeError("output_file must be a string")
-    
-    if not parameters.output_file.strip():
-        raise ValueError("output_file cannot be empty")
-    
-    # Lattice constant validation
-    if parameters.lattice_constant is not None:
-        if not isinstance(parameters.lattice_constant, (int, float)):
-            raise TypeError("lattice_constant must be numeric or None")
-        
-        if parameters.lattice_constant <= 0:
-            raise ValueError("lattice_constant must be positive")
-        
-        if parameters.lattice_constant < 2.0 or parameters.lattice_constant > 6.0:
-            raise ValueError("lattice_constant outside reasonable range (2.0-6.0 Å)")
-    
-    # Fix bottom layers validation
-    if not isinstance(parameters.fix_bottom_layers, int):
-        raise TypeError("fix_bottom_layers must be an integer")
-    
-    if parameters.fix_bottom_layers < 0:
-        raise ValueError("fix_bottom_layers must be non-negative")
-    
-    if parameters.fix_bottom_layers >= parameters.n_metal_layers - 1:
+
+    # Validate metal
+    if not params.metal:
+        raise ValueError("Metal element symbol is required")
+
+    if params.metal not in SUPPORTED_METALS:
         raise ValueError(
-            f"fix_bottom_layers ({parameters.fix_bottom_layers}) must be less than n_metal_layers-1 ({parameters.n_metal_layers-1}). "
-            "Need at least 2 free layers."
+            f"Metal '{params.metal}' not supported. "
+            f"Supported metals: {', '.join(sorted(SUPPORTED_METALS))}"
         )
-    
-    # Water model validation
-    if not isinstance(parameters.water_model, str):
-        raise TypeError("water_model must be a string")
-    
-    # Validate water model exists and is supported
-    try:
-        get_water_model(parameters.water_model)
-    except ValueError as e:
-        raise ValueError(f"Invalid water model: {e}")
-    
-    # Water thickness validation
-    if parameters.water_thickness is not None:
-        if not isinstance(parameters.water_thickness, (int, float)):
-            raise TypeError("water_thickness must be numeric or None")
-        
-        if parameters.water_thickness <= 0:
-            raise ValueError("water_thickness must be positive")
-        
-        if parameters.water_thickness < 10.0:
-            raise ValueError("water_thickness too small (<10 Å). Minimum recommended is 10 Å.")
-        
-        if parameters.water_thickness > 100.0:
-            raise ValueError("water_thickness too large (>100 Å). Consider computational cost.")
-    
-    # Number of water molecules validation
-    if parameters.n_water_molecules is not None:
-        if not isinstance(parameters.n_water_molecules, int):
-            raise TypeError("n_water_molecules must be an integer or None")
-        
-        if parameters.n_water_molecules <= 0:
-            raise ValueError("n_water_molecules must be positive")
-        
-        if parameters.n_water_molecules > 10000:
-            raise ValueError("n_water_molecules too large (>10000). Consider computational cost.")
-        
-        if parameters.n_water_molecules < 10:
-            raise ValueError("n_water_molecules too small (<10). Need reasonable water layer.")
-    
-    # Water density validation
-    if parameters.water_density is not None:
-        if not isinstance(parameters.water_density, (int, float)):
-            raise TypeError("water_density must be numeric or None")
-        
-        if parameters.water_density <= 0:
-            raise ValueError("water_density must be positive")
-        
-        if parameters.water_density > 1.5:
-            raise ValueError("water_density too high (>1.5 g/cm³). Water density is ~1 g/cm³.")
-        
-        if parameters.water_density < 0.5:
-            raise ValueError("water_density too low (<0.5 g/cm³). Check units.")
-    
-    # Metal-water gap validation
-    if not isinstance(parameters.metal_water_gap, (int, float)):
-        raise TypeError("metal_water_gap must be numeric")
-    
-    if parameters.metal_water_gap <= 0:
-        raise ValueError("metal_water_gap must be positive")
-    
-    if parameters.metal_water_gap < 1.5:
-        raise ValueError("metal_water_gap too small (<1.5 Å). Risk of atomic overlap.")
-    
-    if parameters.metal_water_gap > 10.0:
-        raise ValueError("metal_water_gap too large (>10 Å). Consider physical relevance.")
-    
-    # Vacuum above water validation
-    if not isinstance(parameters.vacuum_above_water, (int, float)):
-        raise TypeError("vacuum_above_water must be numeric")
-    
-    if parameters.vacuum_above_water <= 0:
-        raise ValueError("vacuum_above_water must be positive")
-    
-    if parameters.vacuum_above_water < 5.0:
-        raise ValueError("vacuum_above_water too small (<5 Å). Minimum recommended is 5 Å.")
-    
-    if parameters.vacuum_above_water > 50.0:
-        raise ValueError("vacuum_above_water too large (>50 Å). Consider computational cost.")
-    
-    # Packmol tolerance validation
-    if not isinstance(parameters.packmol_tolerance, (int, float)):
-        raise TypeError("packmol_tolerance must be numeric")
-    
-    if parameters.packmol_tolerance <= 0:
-        raise ValueError("packmol_tolerance must be positive")
-    
-    if parameters.packmol_tolerance < 1.0:
-        raise ValueError("packmol_tolerance too small (<1.0 Å). Risk of molecular overlap.")
-    
-    if parameters.packmol_tolerance > 3.0:
-        raise ValueError("packmol_tolerance too large (>3.0 Å). May affect packing efficiency.")
-    
-    # Packmol seed validation
-    if not isinstance(parameters.packmol_seed, int):
-        raise TypeError("packmol_seed must be an integer")
-    
-    if parameters.packmol_seed < 0:
-        raise ValueError("packmol_seed must be non-negative")
-    
-    # Packmol executable validation
-    if not isinstance(parameters.packmol_executable, str):
-        raise TypeError("packmol_executable must be a string")
-    
-    if not parameters.packmol_executable.strip():
-        raise ValueError("packmol_executable cannot be empty")
-    
-    # Output format validation
-    if parameters.output_format is not None:
-        if not isinstance(parameters.output_format, str):
-            raise TypeError("output_format must be a string or None")
-        
-        valid_formats = ["xyz", "vasp", "lammps"]
-        if parameters.output_format.lower() not in valid_formats:
+
+    # Validate metal_size
+    if not params.metal_size or len(params.metal_size) != 3:
+        raise ValueError("metal_size must be a tuple of 3 integers (nx, ny, nz)")
+
+    nx, ny, nz = params.metal_size
+
+    if not all(isinstance(x, int) for x in params.metal_size):
+        raise ValueError("metal_size values must be integers")
+
+    if nx < 1 or ny < 1:
+        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
+
+    if nz < 3:
+        raise ValueError(f"Number of layers (nz={nz}) must be at least 3 for proper surface representation")
+
+    if nx > 20 or ny > 20:
+        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency")
+
+    if nz > 20:
+        raise ValueError(f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency")
+
+    # Validate water parameters
+    if params.n_water_molecules < 1:
+        raise ValueError(f"n_water_molecules ({params.n_water_molecules}) must be at least 1")
+
+    if params.n_water_molecules > 10000:
+        raise ValueError(f"n_water_molecules ({params.n_water_molecules}) is very large (>10000). Consider computational cost.")
+
+    if params.water_density <= 0:
+        raise ValueError(f"water_density ({params.water_density} g/cm³) must be positive")
+
+    if params.water_density < 0.5 or params.water_density > 1.5:
+        raise ValueError(f"water_density ({params.water_density} g/cm³) should be between 0.5 and 1.5 g/cm³")
+
+    # Validate water model
+    if params.water_model not in WATER_MODELS:
+        raise ValueError(
+            f"Water model '{params.water_model}' not supported. "
+            f"Supported models: {', '.join(WATER_MODELS.keys())}"
+        )
+
+    # Validate gap and vacuum
+    if params.gap_above_metal < 0:
+        raise ValueError(f"gap_above_metal ({params.gap_above_metal} Å) must be non-negative")
+
+    if params.gap_above_metal > 10:
+        raise ValueError(f"gap_above_metal ({params.gap_above_metal} Å) is very large (>10 Å)")
+
+    if params.vacuum_above_water < 0:
+        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Å) must be non-negative")
+
+    if params.vacuum_above_water > 50:
+        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Å) should not exceed 50 Å")
+
+    # Validate lattice constant if provided
+    if params.lattice_constant is not None:
+        if params.lattice_constant <= 0:
+            raise ValueError(f"Lattice constant ({params.lattice_constant} Å) must be positive")
+
+        if params.lattice_constant < 2.0 or params.lattice_constant > 7.0:
             raise ValueError(
-                f"Invalid output_format '{parameters.output_format}'. "
+                f"Lattice constant ({params.lattice_constant} Å) should be between 2.0 and 7.0 Å "
+                f"for FCC metals"
+            )
+
+    # Validate fix_bottom_layers
+    if params.fix_bottom_layers < 0:
+        raise ValueError(f"fix_bottom_layers ({params.fix_bottom_layers}) must be non-negative")
+
+    if params.fix_bottom_layers >= nz:
+        raise ValueError(
+            f"fix_bottom_layers ({params.fix_bottom_layers}) must be less than "
+            f"the number of layers ({nz})"
+        )
+
+    # Validate PACKMOL parameters
+    if params.packmol_tolerance <= 0:
+        raise ValueError(f"packmol_tolerance ({params.packmol_tolerance} Å) must be positive")
+
+    if params.packmol_tolerance < 1.0:
+        print(f"Warning: Small packmol_tolerance ({params.packmol_tolerance} Å) may cause packing failures")
+
+    if params.packmol_tolerance > 3.0:
+        print(f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Å) may result in poor packing")
+
+    # Validate seed
+    if params.seed < 0:
+        raise ValueError(f"seed ({params.seed}) must be non-negative")
+
+    # Validate output file
+    if not params.output_file:
+        raise ValueError("Output file path is required")
+
+    output_path = Path(params.output_file)
+
+    # Check if parent directory exists
+    parent_dir = output_path.parent
+    if parent_dir != Path(".") and not parent_dir.exists():
+        raise ValueError(f"Output directory does not exist: {parent_dir}")
+
+    # Validate output format
+    if params.output_format:
+        valid_formats = {"xyz", "vasp", "poscar", "lammps", "data"}
+        if params.output_format.lower() not in valid_formats:
+            raise ValueError(
+                f"Invalid output format '{params.output_format}'. "
                 f"Supported formats: {', '.join(valid_formats)}"
             )
-    
-    # Water orientation validation
-    if not isinstance(parameters.water_orientation, str):
-        raise TypeError("water_orientation must be a string")
-    
-    valid_orientations = ["random", "ordered", "bulk"]
-    if parameters.water_orientation.lower() not in valid_orientations:
-        raise ValueError(
-            f"Invalid water_orientation '{parameters.water_orientation}'. "
-            f"Valid options: {', '.join(valid_orientations)}"
-        )
-    
-    # Surface coverage validation
-    if not isinstance(parameters.surface_coverage, (int, float)):
-        raise TypeError("surface_coverage must be numeric")
-    
-    if parameters.surface_coverage <= 0 or parameters.surface_coverage > 1.0:
-        raise ValueError("surface_coverage must be between 0 and 1")
-    
-    # Surface hydroxyl validation
-    if not isinstance(parameters.add_surface_hydroxyl, bool):
-        raise TypeError("add_surface_hydroxyl must be a boolean")
-    
-    # Hydroxyl coverage validation
-    if not isinstance(parameters.hydroxyl_coverage, (int, float)):
-        raise TypeError("hydroxyl_coverage must be numeric")
-    
-    if parameters.hydroxyl_coverage < 0 or parameters.hydroxyl_coverage > 1.0:
-        raise ValueError("hydroxyl_coverage must be between 0 and 1")
-    
-    # Center system validation
-    if not isinstance(parameters.center_system, bool):
-        raise TypeError("center_system must be a boolean")
-    
-    # Logging parameters validation
-    if not isinstance(parameters.log, bool):
-        raise TypeError("log must be a boolean")
-    
-    if parameters.logger is not None:
-        # Import here to avoid circular imports
-        try:
-            from ...utils.logger import MLIPLogger
-            if not isinstance(parameters.logger, MLIPLogger):
-                raise TypeError("logger must be an MLIPLogger instance or None")
-        except ImportError:
-            raise ImportError("MLIPLogger not available. Check utils.logger module.")
-    
-    # Cross-parameter validation
-    if parameters.n_water_molecules is not None and parameters.water_thickness is not None:
-        # Both specified - warn but allow (water_thickness takes precedence for region calculation)
-        pass
-    
-    if parameters.n_water_molecules is None and parameters.water_thickness is None:
-        raise ValueError("Either n_water_molecules or water_thickness must be specified")
-    
-    # Check system size reasonableness
-    estimated_metal_atoms = (parameters.metal_size[0] * parameters.metal_size[1] * 
-                           parameters.n_metal_layers * 4)  # Rough estimate for FCC
-    
-    estimated_water_molecules = parameters.n_water_molecules or 100  # Default estimate
-    total_atoms = estimated_metal_atoms + estimated_water_molecules * 3
-    
-    if total_atoms > 50000:
-        raise ValueError(
-            f"System too large (~{total_atoms} atoms). "
-            "Consider reducing metal_size, n_metal_layers, or water content."
-        )
-    
-    if total_atoms < 50:
-        raise ValueError(
-            f"System too small (~{total_atoms} atoms). "
-            "Consider increasing system size."
-        )
+    else:
+        # Check if file extension is recognizable
+        suffix = output_path.suffix.lower()
+        valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data"}
+        if suffix and suffix not in valid_extensions and output_path.name.upper() != "POSCAR":
+            print(f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default.")
+
+
+def get_lattice_constant(metal: str, custom_lattice: float = None) -> float:
+    """
+    Get lattice constant for a metal.
+
+    Args:
+        metal: Metal element symbol
+        custom_lattice: Custom lattice constant (optional)
+
+    Returns:
+        Lattice constant in Angstroms
+
+    Raises:
+        ValueError: If metal is not supported and no custom lattice is provided
+    """
+    if custom_lattice is not None:
+        return custom_lattice
+
+    if metal in DEFAULT_LATTICE_CONSTANTS:
+        return DEFAULT_LATTICE_CONSTANTS[metal]
+
+    raise ValueError(
+        f"No default lattice constant for metal '{metal}'. "
+        f"Please provide a custom lattice constant."
+    )
+
+
+def get_water_model_params(model: str) -> dict:
+    """
+    Get water model parameters.
+
+    Args:
+        model: Water model name
+
+    Returns:
+        Dictionary with water model parameters
+
+    Raises:
+        ValueError: If model is not supported
+    """
+    if model not in WATER_MODELS:
+        raise ValueError(f"Unknown water model: {model}")
+
+    return WATER_MODELS[model]
