@@ -19,15 +19,15 @@ class MetalWaterParameters:
         metal: Metal element symbol (e.g., "Au", "Pt", "Cu", "Ag", "Pd", "Ni", "Al").
             Must be a valid element symbol for an FCC metal.
 
-        metal_size: Surface size as (nx, ny, nz) unit cells.
+        size: Surface size as (nx, ny, nz) unit cells.
             - nx, ny: lateral dimensions (repetitions in x and y)
             - nz: number of atomic layers in z-direction
             Example: (4, 4, 4) creates a 4x4 surface with 4 layers
 
-        n_water_molecules: Number of water molecules to add above the metal surface.
+        n_water: Number of water molecules to add above the metal surface.
             The water box will be sized to achieve the target density.
 
-        water_density: Target density of water in g/cm³.
+        density: Target density of water in g/cm³.
             Default: 1.0 g/cm³ (standard water density at room temperature)
 
         gap_above_metal: Gap between the top of the metal surface and the bottom
@@ -78,17 +78,17 @@ class MetalWaterParameters:
         Basic Pt-water interface:
         >>> params = MetalWaterParameters(
         ...     metal="Pt",
-        ...     metal_size=(4, 4, 4),
-        ...     n_water_molecules=100,
+        ...     size=(4, 4, 4),
+        ...     n_water=100,
         ...     output_file="pt_water.data"
         ... )
 
         Gold-water interface with custom parameters:
         >>> params = MetalWaterParameters(
         ...     metal="Au",
-        ...     metal_size=(5, 5, 6),
-        ...     n_water_molecules=200,
-        ...     water_density=0.997,
+        ...     size=(5, 5, 6),
+        ...     n_water=200,
+        ...     density=0.997,
         ...     gap_above_metal=3.5,
         ...     vacuum_above_water=10.0,
         ...     output_file="au_water.vasp",
@@ -98,8 +98,8 @@ class MetalWaterParameters:
         Copper-water interface for large-scale MD:
         >>> params = MetalWaterParameters(
         ...     metal="Cu",
-        ...     metal_size=(10, 10, 8),
-        ...     n_water_molecules=500,
+        ...     size=(10, 10, 8),
+        ...     n_water=500,
         ...     water_model="TIP3P",
         ...     output_file="cu_water_large.lammps",
         ...     lattice_constant=3.615,
@@ -114,10 +114,10 @@ class MetalWaterParameters:
     """
 
     metal: str
-    metal_size: Tuple[int, int, int]  # (nx, ny, nz)
-    n_water_molecules: int
+    size: Tuple[int, int, int]  # (nx, ny, nz)
+    n_water: int
     output_file: str
-    water_density: float = 1.0  # g/cm³
+    density: float = 1.0  # g/cm³
     gap_above_metal: float = 0.0  # Angstroms
     vacuum_above_water: float = 0.0  # Angstroms
     water_model: str = "SPC/E"

@@ -39,22 +39,22 @@ Output Formats:
 
 Examples:
   1. Basic Pt-water interface:
-     mlip-struct-gen generate metal-water --metal Pt --metal-size 4 4 4 \\
+     mlip-struct-gen generate metal-water --metal Pt --size 4 4 4 \\
        --n-water 100 --output pt_water.data
 
   2. Gold-water with custom parameters:
-     mlip-struct-gen generate metal-water --metal Au --metal-size 5 5 6 \\
-       --n-water 200 --water-density 0.997 --gap 3.5 --vacuum 10 \\
+     mlip-struct-gen generate metal-water --metal Au --size 5 5 6 \\
+       --n-water 200 --density 0.997 --gap 3.5 --vacuum 10 \\
        --fix-bottom-layers 2 --output au_water.vasp
 
   3. Large copper-water system for MD:
-     mlip-struct-gen generate metal-water --metal Cu --metal-size 10 10 8 \\
+     mlip-struct-gen generate metal-water --metal Cu --size 10 10 8 \\
        --n-water 500 --water-model TIP3P --lattice-constant 3.615 \\
        --fix-bottom-layers 3 --output cu_water_large.lammps
 
   4. Aluminum-water with specific density:
-     mlip-struct-gen generate metal-water --metal Al --metal-size 6 6 5 \\
-       --n-water 300 --water-density 1.05 --gap 4.0 \\
+     mlip-struct-gen generate metal-water --metal Al --size 6 6 5 \\
+       --n-water 300 --density 1.05 --gap 4.0 \\
        --output al_water_interface.xyz
         """,
     )
@@ -77,7 +77,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--metal-size",
+        "--size",
         type=int,
         nargs=3,
         default=[4, 4, 4],
@@ -95,7 +95,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--water-density", "-d",
+        "--density", "-d",
         type=float,
         default=1.0,
         metavar="RHO",
@@ -210,12 +210,12 @@ def validate_args(args: argparse.Namespace) -> None:
         print(f"Error: Output file '{args.output}' already exists. Use --force to overwrite", file=sys.stderr)
         sys.exit(1)
 
-    # Validate metal_size
-    if len(args.metal_size) != 3:
-        print("Error: --metal-size must have exactly 3 values (nx ny nz)", file=sys.stderr)
+    # Validate size
+    if len(args.size) != 3:
+        print("Error: --size must have exactly 3 values (nx ny nz)", file=sys.stderr)
         sys.exit(1)
 
-    nx, ny, nz = args.metal_size
+    nx, ny, nz = args.size
     if nx < 1 or ny < 1:
         print(f"Error: Lateral dimensions (nx={nx}, ny={ny}) must be at least 1", file=sys.stderr)
         sys.exit(1)
@@ -229,8 +229,8 @@ def validate_args(args: argparse.Namespace) -> None:
         print(f"Error: --n-water ({args.n_water}) must be at least 1", file=sys.stderr)
         sys.exit(1)
 
-    if args.water_density <= 0:
-        print(f"Error: --water-density ({args.water_density}) must be positive", file=sys.stderr)
+    if args.density <= 0:
+        print(f"Error: --density ({args.density}) must be positive", file=sys.stderr)
         sys.exit(1)
 
     # Validate fix_bottom_layers
@@ -294,10 +294,10 @@ def handle_command(args: argparse.Namespace) -> int:
     if args.dry_run:
         print("Dry run - would generate metal-water interface with:")
         print(f"  Metal: {args.metal}")
-        print(f"  Metal size: {args.metal_size[0]}x{args.metal_size[1]} unit cells, {args.metal_size[2]} layers")
+        print(f"  Metal size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
         print(f"  Water molecules: {args.n_water}")
         print(f"  Water model: {args.water_model}")
-        print(f"  Water density: {args.water_density} g/cm^3")
+        print(f"  Water density: {args.density} g/cm^3")
         print(f"  Gap above metal: {args.gap} Angstroms")
         print(f"  Vacuum above water: {args.vacuum} Angstroms")
         if args.lattice_constant:
@@ -315,10 +315,10 @@ def handle_command(args: argparse.Namespace) -> int:
         # Create parameters
         params = MetalWaterParameters(
             metal=args.metal,
-            metal_size=tuple(args.metal_size),
-            n_water_molecules=args.n_water,
+            size=tuple(args.size),
+            n_water=args.n_water,
             output_file=args.output,
-            water_density=args.water_density,
+            density=args.density,
             gap_above_metal=args.gap,
             vacuum_above_water=args.vacuum,
             water_model=args.water_model,
@@ -346,9 +346,9 @@ def handle_command(args: argparse.Namespace) -> int:
             print(f"Successfully generated: {output_file}")
 
             # Print summary
-            print(f"  Metal: {args.metal} ({args.metal_size[0]}x{args.metal_size[1]}x{args.metal_size[2]})")
+            print(f"  Metal: {args.metal} ({args.size[0]}x{args.size[1]}x{args.size[2]})")
             print(f"  Water: {args.n_water} {args.water_model} molecules")
-            print(f"  Density: {args.water_density} g/cm^3")
+            print(f"  Density: {args.density} g/cm^3")
             if args.fix_bottom_layers > 0:
                 print(f"  Fixed bottom layers: {args.fix_bottom_layers}")
 
@@ -379,16 +379,16 @@ Water Models: SPC/E (default), TIP3P, TIP4P
 
 Examples:
   1. Basic Pt-water interface:
-     mlip-metal-water --metal Pt --metal-size 4 4 4 --n-water 100 \\
+     mlip-metal-water --metal Pt --size 4 4 4 --n-water 100 \\
        --output pt_water.data
 
   2. Gold-water with custom parameters:
-     mlip-metal-water --metal Au --metal-size 5 5 6 --n-water 200 \\
-       --water-density 0.997 --gap 3.5 --vacuum 10 \\
+     mlip-metal-water --metal Au --size 5 5 6 --n-water 200 \\
+       --density 0.997 --gap 3.5 --vacuum 10 \\
        --fix-bottom-layers 2 --output au_water.vasp
 
   3. Large copper-water system:
-     mlip-metal-water --metal Cu --metal-size 10 10 8 --n-water 500 \\
+     mlip-metal-water --metal Cu --size 10 10 8 --n-water 500 \\
        --water-model TIP3P --lattice-constant 3.615 \\
        --output cu_water_large.lammps
         """,
@@ -416,7 +416,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--metal-size",
+        "--size",
         type=int,
         nargs=3,
         default=[4, 4, 4],
@@ -433,7 +433,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--water-density", "-d",
+        "--density", "-d",
         type=float,
         default=1.0,
         help="Water density in g/cm^3 (default: 1.0)",

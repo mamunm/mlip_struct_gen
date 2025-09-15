@@ -19,12 +19,12 @@ class MetalSaltWaterParameters:
         metal: Metal element symbol (e.g., "Au", "Pt", "Cu", "Ag", "Pd", "Ni", "Al").
             Must be a valid element symbol for an FCC metal.
 
-        metal_size: Surface size as (nx, ny, nz) unit cells.
+        size: Surface size as (nx, ny, nz) unit cells.
             - nx, ny: lateral dimensions (repetitions in x and y)
             - nz: number of atomic layers in z-direction
             Example: (4, 4, 4) creates a 4x4 surface with 4 layers
 
-        n_water_molecules: Number of water molecules to add above the metal surface.
+        n_water: Number of water molecules to add above the metal surface.
             The water box will be sized to achieve the target density.
 
         salt_type: Type of salt to add. Supported salts:
@@ -37,20 +37,20 @@ class MetalSaltWaterParameters:
             - "KBr": Potassium Bromide
             - "CsCl": Cesium Chloride
 
-        n_salt_molecules: Number of salt formula units to add.
-            For example, n_salt_molecules=5 for NaCl adds 5 Na+ and 5 Cl- ions.
+        n_salt: Number of salt formula units to add.
+            For example, n_salt=5 for NaCl adds 5 Na+ and 5 Cl- ions.
             For CaCl2, it adds 5 Ca2+ and 10 Cl- ions.
 
         include_salt_volume: Whether to account for ion volume when calculating
             water box dimensions. If True, reduces water molecules to maintain
             target density considering ion volume. Default: False
 
-        water_density: Target density of the solution in g/cm^3.
+        density: Target density of the solution in g/cm^3.
             Default: 1.0 g/cm^3 (standard water density at room temperature)
             Note: This is the total solution density if include_salt_volume=True,
             otherwise it's just the water density.
 
-        gap_above_metal: Gap between the top of the metal surface and the bottom
+        gap: Gap between the top of the metal surface and the bottom
             of the solution layer in Angstroms. Default: 0.0 Angstroms
 
         vacuum_above_water: Vacuum space above the solution layer in Angstroms.
@@ -98,23 +98,23 @@ class MetalSaltWaterParameters:
         Basic Pt-NaCl-water interface:
         >>> params = MetalSaltWaterParameters(
         ...     metal="Pt",
-        ...     metal_size=(4, 4, 4),
-        ...     n_water_molecules=100,
+        ...     size=(4, 4, 4),
+        ...     n_water=100,
         ...     salt_type="NaCl",
-        ...     n_salt_molecules=10,
+        ...     n_salt=10,
         ...     output_file="pt_nacl_water.data"
         ... )
 
         Gold-CaCl2-water with custom parameters:
         >>> params = MetalSaltWaterParameters(
         ...     metal="Au",
-        ...     metal_size=(5, 5, 6),
-        ...     n_water_molecules=200,
+        ...     size=(5, 5, 6),
+        ...     n_water=200,
         ...     salt_type="CaCl2",
-        ...     n_salt_molecules=8,
+        ...     n_salt=8,
         ...     include_salt_volume=True,
-        ...     water_density=1.05,
-        ...     gap_above_metal=3.5,
+        ...     density=1.05,
+        ...     gap=3.5,
         ...     vacuum_above_water=10.0,
         ...     output_file="au_cacl2_water.vasp",
         ...     fix_bottom_layers=2
@@ -123,10 +123,10 @@ class MetalSaltWaterParameters:
         Copper-KCl-water interface for large-scale MD:
         >>> params = MetalSaltWaterParameters(
         ...     metal="Cu",
-        ...     metal_size=(10, 10, 8),
-        ...     n_water_molecules=500,
+        ...     size=(10, 10, 8),
+        ...     n_water=500,
         ...     salt_type="KCl",
-        ...     n_salt_molecules=30,
+        ...     n_salt=30,
         ...     water_model="TIP3P",
         ...     output_file="cu_kcl_water_large.lammps",
         ...     lattice_constant=3.615,
@@ -141,14 +141,14 @@ class MetalSaltWaterParameters:
     """
 
     metal: str
-    metal_size: Tuple[int, int, int]  # (nx, ny, nz)
-    n_water_molecules: int
+    size: Tuple[int, int, int]  # (nx, ny, nz)
+    n_water: int
     salt_type: str
-    n_salt_molecules: int
+    n_salt: int
     output_file: str
     include_salt_volume: bool = False
-    water_density: float = 1.0  # g/cm^3
-    gap_above_metal: float = 0.0  # Angstroms
+    density: float = 1.0  # g/cm^3
+    gap: float = 0.0  # Angstroms
     vacuum_above_water: float = 0.0  # Angstroms
     water_model: str = "SPC/E"
     lattice_constant: Optional[float] = None

@@ -24,9 +24,9 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
     """
     # Box size validation and normalization
     if parameters.box_size is None:
-        # Box size will be computed from n_molecules - validate n_molecules is provided
-        if parameters.n_molecules is None:
-            raise ValueError("Either box_size or n_molecules must be provided")
+        # Box size will be computed from n_water - validate n_water is provided
+        if parameters.n_water is None:
+            raise ValueError("Either box_size or n_water must be provided")
         # box_size will be computed later in the generator
     elif isinstance(parameters.box_size, int | float):
         # Convert single number to cubic box
@@ -90,15 +90,15 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
         raise ValueError(f"Invalid water model: {e}") from e
 
     # Number of molecules validation
-    if parameters.n_molecules is not None:
-        if not isinstance(parameters.n_molecules, int):
-            raise TypeError("n_molecules must be an integer or None")
+    if parameters.n_water is not None:
+        if not isinstance(parameters.n_water, int):
+            raise TypeError("n_water must be an integer or None")
 
-        if parameters.n_molecules <= 0:
-            raise ValueError("n_molecules must be positive")
+        if parameters.n_water <= 0:
+            raise ValueError("n_water must be positive")
 
-        if parameters.n_molecules > 1000000:
-            raise ValueError("n_molecules too large (>1M). Consider using density instead.")
+        if parameters.n_water > 1000000:
+            raise ValueError("n_water too large (>1M). Consider using density instead.")
 
     # Density validation
     if parameters.density is not None:
@@ -118,13 +118,13 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
     # Valid combinations:
     # 1. box_size only (uses default density)
     # 2. box_size + density (custom density)
-    # 3. box_size + n_molecules (fills box with exact n_molecules)
-    # 4. n_molecules only (uses default density to compute box)
-    # 5. n_molecules + density (computes box for n_molecules at specified density)
+    # 3. box_size + n_water (fills box with exact n_water)
+    # 4. n_water only (uses default density to compute box)
+    # 5. n_water + density (computes box for n_water at specified density)
 
     # Invalid: all three specified
-    if parameters.box_size is not None and parameters.n_molecules is not None and parameters.density is not None:
-        raise ValueError("Cannot specify all three of box_size, n_molecules, and density. Choose at most two.")
+    if parameters.box_size is not None and parameters.n_water is not None and parameters.density is not None:
+        raise ValueError("Cannot specify all three of box_size, n_water, and density. Choose at most two.")
 
     # Tolerance validation
     if not isinstance(parameters.tolerance, int | float):
@@ -175,7 +175,7 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
             raise ImportError("MLIPLogger not available. Check utils.logger module.") from None
 
     # Check for reasonable molecule density (only if box_size is provided)
-    if parameters.box_size is not None and parameters.n_molecules is None and parameters.density is None:
+    if parameters.box_size is not None and parameters.n_water is None and parameters.density is None:
         # Will use water model's default density - check if reasonable
         model_density = get_water_density(parameters.water_model)
         box_volume_cm3 = np.prod(parameters.box_size) * 1e-24
@@ -193,5 +193,5 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
         if estimated_molecules > 100000:
             raise ValueError(
                 f"Box size will result in {estimated_molecules} molecules using {parameters.water_model} density. "
-                "Consider using a smaller box or specify n_molecules explicitly."
+                "Consider using a smaller box or specify n_water explicitly."
             )

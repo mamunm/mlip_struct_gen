@@ -22,7 +22,7 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
 Parameter Combinations:
   You can specify any 2 of these 3 parameters:
     - box-size: Dimensions of the simulation box
-    - n-molecules: Number of water molecules
+    - n-water: Number of water molecules
     - density: Water density in g/cm³
 
 Examples:
@@ -33,13 +33,13 @@ Examples:
      mlip-struct-gen generate water-box --box-size 30 --density 1.1 --output water.data
 
   3. Box size + exact molecules:
-     mlip-struct-gen generate water-box --box-size 30 --n-molecules 500 --output water.xyz
+     mlip-struct-gen generate water-box --box-size 30 --n-water 500 --output water.xyz
 
   4. Number of molecules only (computes box):
-     mlip-struct-gen generate water-box --n-molecules 1000 --output water.data
+     mlip-struct-gen generate water-box --n-water 1000 --output water.data
 
   5. Molecules + density (computes box):
-     mlip-struct-gen generate water-box --n-molecules 500 --density 0.92 --output ice.xyz
+     mlip-struct-gen generate water-box --n-water 500 --density 0.92 --output ice.xyz
         """,
     )
 
@@ -62,7 +62,7 @@ Examples:
 
     # Number of molecules
     parser.add_argument(
-        "--n-molecules", "-n",
+        "--n-water", "-n",
         type=int,
         metavar="N",
         help="Number of water molecules to generate",
@@ -166,22 +166,22 @@ def validate_args(args: argparse.Namespace) -> None:
     # Count how many of the 3 main parameters are provided
     params_count = sum([
         args.box_size is not None,
-        args.n_molecules is not None,
+        args.n_water is not None,
         args.density is not None,
     ])
 
     # Check valid combinations
     if params_count == 0:
-        print("Error: Must specify at least one of: --box-size, --n-molecules, --density", file=sys.stderr)
+        print("Error: Must specify at least one of: --box-size, --n-water, --density", file=sys.stderr)
         sys.exit(1)
     elif params_count == 3:
-        print("Error: Cannot specify all three: --box-size, --n-molecules, and --density", file=sys.stderr)
+        print("Error: Cannot specify all three: --box-size, --n-water, and --density", file=sys.stderr)
         print("       Please specify only 2 of these 3 parameters", file=sys.stderr)
         sys.exit(1)
 
     # Need at least box_size OR n_molecules
-    if args.box_size is None and args.n_molecules is None:
-        print("Error: Must specify either --box-size or --n-molecules", file=sys.stderr)
+    if args.box_size is None and args.n_water is None:
+        print("Error: Must specify either --box-size or --n-water", file=sys.stderr)
         sys.exit(1)
 
     # Check output file
@@ -227,8 +227,8 @@ def handle_command(args: argparse.Namespace) -> int:
         print(f"  Water model: {args.water_model}")
         if args.box_size is not None:
             print(f"  Box size: {args.box_size}")
-        if args.n_molecules is not None:
-            print(f"  Molecules: {args.n_molecules}")
+        if args.n_water is not None:
+            print(f"  Molecules: {args.n_water}")
         if args.density is not None:
             print(f"  Density: {args.density} g/cm³")
         print(f"  Tolerance: {args.tolerance} Å")
@@ -244,7 +244,7 @@ def handle_command(args: argparse.Namespace) -> int:
             output_file=args.output,
             box_size=args.box_size,
             water_model=args.water_model,
-            n_molecules=args.n_molecules,
+            n_water=args.n_water,
             density=args.density,
             tolerance=args.tolerance,
             seed=args.seed,
@@ -296,7 +296,7 @@ def main() -> int:
 Parameter Combinations:
   You can specify any 2 of these 3 parameters:
     - box-size: Dimensions of the simulation box
-    - n-molecules: Number of water molecules
+    - n-water: Number of water molecules
     - density: Water density in g/cm³
 
 Examples:
@@ -307,13 +307,13 @@ Examples:
      mlip-water-box --box-size 30 --density 1.1 --output water.data
 
   3. Box size + exact molecules:
-     mlip-water-box --box-size 30 --n-molecules 500 --output water.xyz
+     mlip-water-box --box-size 30 --n-water 500 --output water.xyz
 
   4. Number of molecules only (computes box):
-     mlip-water-box --n-molecules 1000 --output water.data
+     mlip-water-box --n-water 1000 --output water.data
 
   5. Molecules + density (computes box):
-     mlip-water-box --n-molecules 500 --density 0.92 --output ice.xyz
+     mlip-water-box --n-water 500 --density 0.92 --output ice.xyz
         """,
     )
 
@@ -336,7 +336,7 @@ Examples:
 
     # Number of molecules
     parser.add_argument(
-        "--n-molecules", "-n",
+        "--n-water", "-n",
         type=int,
         metavar="N",
         help="Number of water molecules to generate",

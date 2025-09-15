@@ -22,29 +22,29 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
 Parameter Combinations:
   Same as water-box - specify any 2 of these 3 parameters:
     - box-size: Dimensions of the simulation box
-    - n-water-molecules: Number of water molecules
+    - n-water: Number of water molecules
     - density: Total solution density in g/cm³
 
 Salt Parameters:
   - salt-type: Type of salt (NaCl, KCl, CaCl2, MgCl2, etc.)
-  - n-salt-molecules: Number of salt formula units
+  - n-salt: Number of salt formula units
 
 Examples:
   1. Box size with NaCl:
      mlip-struct-gen generate salt-water-box --box-size 40 --salt-type NaCl \\
-       --n-salt-molecules 100 --output nacl_solution.data
+       --n-salt 100 --output nacl_solution.data
 
   2. Include ion volume for concentrated solution:
      mlip-struct-gen generate salt-water-box --box-size 30 --salt-type NaCl \\
-       --n-salt-molecules 200 --include-salt-volume --output concentrated.xyz
+       --n-salt 200 --include-salt-volume --output concentrated.xyz
 
   3. CaCl2 solution (2:1 stoichiometry handled automatically):
      mlip-struct-gen generate salt-water-box --box-size 50 --salt-type CaCl2 \\
-       --n-salt-molecules 50 --output cacl2_solution.data
+       --n-salt 50 --output cacl2_solution.data
 
   4. Specify water molecules and density (box computed):
-     mlip-struct-gen generate salt-water-box --n-water-molecules 1000 --density 1.1 \\
-       --salt-type KCl --n-salt-molecules 30 --output kcl_solution.poscar
+     mlip-struct-gen generate salt-water-box --n-water 1000 --density 1.1 \\
+       --salt-type KCl --n-salt 30 --output kcl_solution.poscar
         """,
     )
 
@@ -66,7 +66,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--n-water-molecules", "-n",
+        "--n-water", "-n",
         type=int,
         metavar="N",
         help="Number of water molecules",
@@ -89,7 +89,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--n-salt-molecules",
+        "--n-salt",
         type=int,
         default=0,
         metavar="N",
@@ -109,15 +109,6 @@ Examples:
         choices=["SPC/E", "TIP3P", "TIP4P"],
         default="SPC/E",
         help="Water model to use (default: SPC/E)",
-    )
-
-    # Ion parameters
-    parser.add_argument(
-        "--ion-parameters",
-        type=str,
-        choices=["joung-cheatham", "smith-dang"],
-        default="joung-cheatham",
-        help="Ion force field parameters (default: joung-cheatham)",
     )
 
     # Output format
@@ -200,22 +191,22 @@ def validate_args(args: argparse.Namespace) -> None:
     # Count main parameters
     params_count = sum([
         args.box_size is not None,
-        args.n_water_molecules is not None,
+        args.n_water is not None,
         args.density is not None,
     ])
 
     # Check valid combinations
     if params_count == 0:
-        print("Error: Must specify at least one of: --box-size, --n-water-molecules, --density", file=sys.stderr)
+        print("Error: Must specify at least one of: --box-size, --n-water, --density", file=sys.stderr)
         sys.exit(1)
     elif params_count == 3:
-        print("Error: Cannot specify all three: --box-size, --n-water-molecules, and --density", file=sys.stderr)
+        print("Error: Cannot specify all three: --box-size, --n-water, and --density", file=sys.stderr)
         print("       Please specify only 2 of these 3 parameters", file=sys.stderr)
         sys.exit(1)
 
-    # Need at least box_size OR n_water_molecules
-    if args.box_size is None and args.n_water_molecules is None:
-        print("Error: Must specify either --box-size or --n-water-molecules", file=sys.stderr)
+    # Need at least box_size OR n_water
+    if args.box_size is None and args.n_water is None:
+        print("Error: Must specify either --box-size or --n-water", file=sys.stderr)
         sys.exit(1)
 
     # Check that include-salt-volume is not used with box-size
@@ -265,11 +256,11 @@ def handle_command(args: argparse.Namespace) -> int:
         print(f"  Output: {args.output}")
         print(f"  Format: {args.output_format}")
         print(f"  Water model: {args.water_model}")
-        print(f"  Salt: {args.salt_type} ({args.n_salt_molecules} formula units)")
+        print(f"  Salt: {args.salt_type} ({args.n_salt} formula units)")
         if args.box_size is not None:
             print(f"  Box size: {args.box_size}")
-        if args.n_water_molecules is not None:
-            print(f"  Water molecules: {args.n_water_molecules}")
+        if args.n_water is not None:
+            print(f"  Water molecules: {args.n_water}")
         if args.density is not None:
             print(f"  Density: {args.density} g/cm³")
         if args.include_salt_volume:
@@ -286,13 +277,12 @@ def handle_command(args: argparse.Namespace) -> int:
         params = SaltWaterBoxGeneratorParameters(
             output_file=args.output,
             box_size=args.box_size,
-            n_water_molecules=args.n_water_molecules,
+            n_water=args.n_water,
             density=args.density,
             salt_type=args.salt_type,
-            n_salt_molecules=args.n_salt_molecules,
+            n_salt=args.n_salt,
             include_salt_volume=args.include_salt_volume,
             water_model=args.water_model,
-            ion_parameters=args.ion_parameters,
             tolerance=args.tolerance,
             seed=args.seed,
             packmol_executable=args.packmol_executable,
@@ -320,7 +310,7 @@ def handle_command(args: argparse.Namespace) -> int:
                 else:
                     print(f"  Box size: {args.box_size} x {args.box_size} x {args.box_size} Å")
 
-            print(f"  Salt: {args.salt_type} ({args.n_salt_molecules} formula units)")
+            print(f"  Salt: {args.salt_type} ({args.n_salt} formula units)")
 
             if args.save_artifacts:
                 print("  Artifacts saved in 'artifacts' directory")
@@ -345,29 +335,29 @@ def main() -> int:
 Parameter Combinations:
   Same as water-box - specify any 2 of these 3 parameters:
     - box-size: Dimensions of the simulation box
-    - n-water-molecules: Number of water molecules
+    - n-water: Number of water molecules
     - density: Total solution density in g/cm³
 
 Salt Parameters:
   - salt-type: Type of salt (NaCl, KCl, CaCl2, MgCl2, etc.)
-  - n-salt-molecules: Number of salt formula units
+  - n-salt: Number of salt formula units
 
 Examples:
   1. Box size with NaCl:
      mlip-salt-water-box --box-size 40 --salt-type NaCl \\
-       --n-salt-molecules 100 --output nacl_solution.data
+       --n-salt 100 --output nacl_solution.data
 
   2. Include ion volume for concentrated solution:
      mlip-salt-water-box --box-size 30 --salt-type NaCl \\
-       --n-salt-molecules 200 --include-salt-volume --output concentrated.xyz
+       --n-salt 200 --include-salt-volume --output concentrated.xyz
 
   3. CaCl2 solution (2:1 stoichiometry handled automatically):
      mlip-salt-water-box --box-size 50 --salt-type CaCl2 \\
-       --n-salt-molecules 50 --output cacl2_solution.data
+       --n-salt 50 --output cacl2_solution.data
 
   4. Specify water molecules and density (box computed):
-     mlip-salt-water-box --n-water-molecules 1000 --density 1.1 \\
-       --salt-type KCl --n-salt-molecules 30 --output kcl_solution.poscar
+     mlip-salt-water-box --n-water 1000 --density 1.1 \\
+       --salt-type KCl --n-salt 30 --output kcl_solution.poscar
         """,
     )
 
@@ -393,7 +383,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--n-water-molecules", "-n",
+        "--n-water", "-n",
         type=int,
         metavar="N",
         help="Number of water molecules",
@@ -416,7 +406,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--n-salt-molecules",
+        "--n-salt",
         type=int,
         default=0,
         metavar="N",
@@ -436,15 +426,6 @@ Examples:
         choices=["SPC/E", "TIP3P", "TIP4P"],
         default="SPC/E",
         help="Water model to use (default: SPC/E)",
-    )
-
-    # Ion parameters
-    parser.add_argument(
-        "--ion-parameters",
-        type=str,
-        choices=["joung-cheatham", "smith-dang"],
-        default="joung-cheatham",
-        help="Ion force field parameters (default: joung-cheatham)",
     )
 
     # Output format

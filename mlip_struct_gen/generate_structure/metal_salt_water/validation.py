@@ -100,14 +100,14 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
             f"Supported metals: {', '.join(sorted(SUPPORTED_METALS))}"
         )
 
-    # Validate metal_size
-    if not params.metal_size or len(params.metal_size) != 3:
-        raise ValueError("metal_size must be a tuple of 3 integers (nx, ny, nz)")
+    # Validate size
+    if not params.size or len(params.size) != 3:
+        raise ValueError("size must be a tuple of 3 integers (nx, ny, nz)")
 
-    nx, ny, nz = params.metal_size
+    nx, ny, nz = params.size
 
-    if not all(isinstance(x, int) for x in params.metal_size):
-        raise ValueError("metal_size values must be integers")
+    if not all(isinstance(x, int) for x in params.size):
+        raise ValueError("size values must be integers")
 
     if nx < 1 or ny < 1:
         raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
@@ -128,24 +128,24 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
             f"Supported salts: {', '.join(SUPPORTED_SALTS.keys())}"
         )
 
-    if params.n_salt_molecules < 0:
-        raise ValueError(f"n_salt_molecules ({params.n_salt_molecules}) must be non-negative")
+    if params.n_salt < 0:
+        raise ValueError(f"n_salt ({params.n_salt}) must be non-negative")
 
-    if params.n_salt_molecules > 1000:
-        raise ValueError(f"n_salt_molecules ({params.n_salt_molecules}) is very large (>1000). Consider computational cost.")
+    if params.n_salt > 1000:
+        raise ValueError(f"n_salt ({params.n_salt}) is very large (>1000). Consider computational cost.")
 
     # Validate water parameters
-    if params.n_water_molecules < 1:
-        raise ValueError(f"n_water_molecules ({params.n_water_molecules}) must be at least 1")
+    if params.n_water < 1:
+        raise ValueError(f"n_water ({params.n_water}) must be at least 1")
 
-    if params.n_water_molecules > 10000:
-        raise ValueError(f"n_water_molecules ({params.n_water_molecules}) is very large (>10000). Consider computational cost.")
+    if params.n_water > 10000:
+        raise ValueError(f"n_water ({params.n_water}) is very large (>10000). Consider computational cost.")
 
-    if params.water_density <= 0:
-        raise ValueError(f"water_density ({params.water_density} g/cm^3) must be positive")
+    if params.density <= 0:
+        raise ValueError(f"density ({params.density} g/cm^3) must be positive")
 
-    if params.water_density < 0.5 or params.water_density > 1.5:
-        raise ValueError(f"water_density ({params.water_density} g/cm^3) should be between 0.5 and 1.5 g/cm^3")
+    if params.density < 0.5 or params.density > 1.5:
+        raise ValueError(f"density ({params.density} g/cm^3) should be between 0.5 and 1.5 g/cm^3")
 
     # Validate water model
     if params.water_model not in WATER_MODELS:
@@ -155,11 +155,11 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
         )
 
     # Validate gap and vacuum
-    if params.gap_above_metal < 0:
-        raise ValueError(f"gap_above_metal ({params.gap_above_metal} Angstroms) must be non-negative")
+    if params.gap < 0:
+        raise ValueError(f"gap ({params.gap} Angstroms) must be non-negative")
 
-    if params.gap_above_metal > 10:
-        raise ValueError(f"gap_above_metal ({params.gap_above_metal} Angstroms) is very large (>10 Angstroms)")
+    if params.gap > 10:
+        raise ValueError(f"gap ({params.gap} Angstroms) is very large (>10 Angstroms)")
 
     if params.vacuum_above_water < 0:
         raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Angstroms) must be non-negative")

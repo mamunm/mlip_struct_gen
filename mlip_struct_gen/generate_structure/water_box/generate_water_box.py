@@ -117,15 +117,15 @@ class WaterBoxGenerator:
             self.logger.info("Starting water box generation")
 
         # Calculate number of molecules if not provided
-        n_molecules = self.parameters.n_molecules
-        if n_molecules is None:
+        n_water = self.parameters.n_water
+        if n_water is None:
             if self.parameters.density is not None:
                 # Use user-specified density
                 if self.logger:
                     self.logger.info(f"Using custom density: {self.parameters.density} g/cm³")
                 assert self.parameters.box_size is not None  # Type guard for mypy
                 # After validation, box_size is always tuple[float, float, float]
-                n_molecules = self._calculate_molecules_custom_density(
+                n_water = self._calculate_molecules_custom_density(
                     self.parameters.box_size, self.parameters.density  # type: ignore[arg-type]
                 )
             else:
@@ -135,12 +135,12 @@ class WaterBoxGenerator:
                     self.logger.info(f"Using {self.parameters.water_model} default density: {model_density} g/cm³")
                 assert self.parameters.box_size is not None  # Type guard for mypy
                 # After validation, box_size is always tuple[float, float, float]
-                n_molecules = self._calculate_molecules_custom_density(
+                n_water = self._calculate_molecules_custom_density(
                     self.parameters.box_size, model_density  # type: ignore[arg-type]
                 )
 
         if self.logger:
-            self.logger.info(f"Target molecules: {n_molecules}")
+            self.logger.info(f"Target molecules: {n_water}")
 
         # Create output directory
         output_path = Path(self.parameters.output_file)
@@ -182,7 +182,7 @@ class WaterBoxGenerator:
             self._create_packmol_input(
                 input_file, water_xyz, temp_output,
                 self.parameters.box_size,  # type: ignore[arg-type]
-                n_molecules,
+                n_water,
                 self.parameters.tolerance, self.parameters.seed
             )
 
@@ -236,14 +236,14 @@ class WaterBoxGenerator:
         # Calculate number of molecules
         mass_g = density * volume_cm3
         moles = mass_g / water_molar_mass
-        n_molecules = int(moles * na)
+        n_water = int(moles * na)
 
-        return n_molecules
+        return n_water
 
     def _compute_box_size_from_molecules(self) -> None:
-        """Compute box_size from n_molecules and density."""
-        if self.parameters.n_molecules is None:
-            raise ValueError("n_molecules must be provided when box_size is None")
+        """Compute box_size from n_water and density."""
+        if self.parameters.n_water is None:
+            raise ValueError("n_water must be provided when box_size is None")
 
         # Determine density to use
         if self.parameters.density is not None:
@@ -257,7 +257,7 @@ class WaterBoxGenerator:
         na = 6.022e23  # Avogadro's number
 
         # Calculate mass and volume
-        moles = self.parameters.n_molecules / na
+        moles = self.parameters.n_water / na
         mass_g = moles * water_molar_mass
         volume_cm3 = mass_g / density
         volume_angstrom3 = volume_cm3 * 1e24
@@ -270,15 +270,15 @@ class WaterBoxGenerator:
 
         # Log the computed box size
         if self.logger:
-            self.logger.info(f"Computed box size from {self.parameters.n_molecules} molecules: {box_size:.2f} Å (cubic)")
+            self.logger.info(f"Computed box size from {self.parameters.n_water} molecules: {box_size:.2f} Å (cubic)")
             self.logger.info(f"Using density: {density:.3f} g/cm³")
 
         # Validate the computed box size
         if any(s > 1000.0 for s in self.parameters.box_size):
-            raise ValueError(f"Computed box dimensions too large ({box_size:.1f} Å). Check n_molecules or density.")
+            raise ValueError(f"Computed box dimensions too large ({box_size:.1f} Å). Check n_water or density.")
 
         if any(s < 5.0 for s in self.parameters.box_size):
-            raise ValueError(f"Computed box dimensions too small ({box_size:.1f} Å). Check n_molecules or density.")
+            raise ValueError(f"Computed box dimensions too small ({box_size:.1f} Å). Check n_water or density.")
 
     def _create_packmol_input(
         self,
@@ -286,7 +286,7 @@ class WaterBoxGenerator:
         water_xyz: Path,
         output_file: Path,
         box_size: tuple[float, float, float],
-        n_molecules: int,
+        n_water: int,
         tolerance: float,
         seed: int
     ) -> None:
@@ -306,7 +306,7 @@ class WaterBoxGenerator:
             f.write(f"seed {seed}\n")
             f.write("\n")
             f.write(f"structure {water_xyz.name}\n")  # Use relative path
-            f.write(f"  number {n_molecules}\n")
+            f.write(f"  number {n_water}\n")
             f.write(f"  inside box {x_low} {y_low} {z_low} {x_high} {y_high} {z_high}\n")
             f.write("end structure\n")
 
@@ -342,14 +342,14 @@ class WaterBoxGenerator:
 
     def estimate_box_size(
         self,
-        n_molecules: int,
+        n_water: int,
         aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 1.0)
     ) -> tuple[float, float, float]:
         """
         Estimate box size needed for given number of water molecules.
 
         Args:
-            n_molecules: Number of water molecules
+            n_water: Number of water molecules
             aspect_ratio: Relative box dimensions (x:y:z)
 
         Returns:
@@ -365,7 +365,7 @@ class WaterBoxGenerator:
         density = get_water_density(self.parameters.water_model)
 
         # Calculate required volume
-        moles = n_molecules / na
+        moles = n_water / na
         mass_g = moles * water_molar_mass
         volume_cm3 = mass_g / density
         volume_angstrom3 = volume_cm3 * 1e24
@@ -395,7 +395,7 @@ class WaterBoxGenerator:
             lines = f.readlines()
 
         n_atoms = int(lines[0].strip())
-        n_molecules = n_atoms // 3  # Each water molecule has 3 atoms
+        n_water = n_atoms // 3  # Each water molecule has 3 atoms
 
         # Parse atom positions
         atoms = []
@@ -417,8 +417,8 @@ class WaterBoxGenerator:
 
             # Counts section
             f.write(f"{n_atoms} atoms\n")
-            f.write(f"{n_molecules * 2} bonds\n")  # 2 bonds per water molecule (O-H, O-H)
-            f.write(f"{n_molecules} angles\n")     # 1 angle per water molecule (H-O-H)
+            f.write(f"{n_water * 2} bonds\n")  # 2 bonds per water molecule (O-H, O-H)
+            f.write(f"{n_water} angles\n")     # 1 angle per water molecule (H-O-H)
             f.write("\n")
 
             # Types section
@@ -445,7 +445,7 @@ class WaterBoxGenerator:
             # Atoms section
             f.write("Atoms # full\n\n")
             atom_id = 1
-            for mol_id in range(1, n_molecules + 1):
+            for mol_id in range(1, n_water + 1):
                 for j in range(3):  # O, H, H for each molecule
                     element, x, y, z = atoms[(mol_id - 1) * 3 + j]
                     atom_type = 1 if element == 'O' else 2
@@ -458,7 +458,7 @@ class WaterBoxGenerator:
             # Bonds section
             f.write("Bonds\n\n")
             bond_id = 1
-            for mol_id in range(1, n_molecules + 1):
+            for mol_id in range(1, n_water + 1):
                 base_atom = (mol_id - 1) * 3 + 1  # Oxygen atom ID
                 # O-H1 bond
                 f.write(f"{bond_id:6d} 1 {base_atom:6d} {base_atom + 1:6d}\n")
@@ -471,14 +471,14 @@ class WaterBoxGenerator:
             # Angles section
             f.write("Angles\n\n")
             angle_id = 1
-            for mol_id in range(1, n_molecules + 1):
+            for mol_id in range(1, n_water + 1):
                 base_atom = (mol_id - 1) * 3 + 1  # Oxygen atom ID
                 # H-O-H angle
                 f.write(f"{angle_id:6d} 1 {base_atom + 1:6d} {base_atom:6d} {base_atom + 2:6d}\n")
                 angle_id += 1
 
         if self.logger:
-            self.logger.success(f"Successfully converted to LAMMPS data format with {n_molecules * 2} bonds and {n_molecules} angles")
+            self.logger.success(f"Successfully converted to LAMMPS data format with {n_water * 2} bonds and {n_water} angles")
 
     def _convert_xyz_to_poscar(self, input_xyz: Path, output_file: Path) -> None:
         """

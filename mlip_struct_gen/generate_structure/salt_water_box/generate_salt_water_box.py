@@ -55,7 +55,7 @@ class SaltWaterBoxGenerator:
         if self.logger:
             self.logger.info("Initializing SaltWaterBoxGenerator")
             self.logger.info(f"Water model: {self.parameters.water_model}")
-            self.logger.info(f"Salt: {self.salt_model['name']} ({self.parameters.n_salt_molecules} formula units)")
+            self.logger.info(f"Salt: {self.salt_model['name']} ({self.parameters.n_salt} formula units)")
             self.logger.info(f"Ions: {self.n_cations} cations, {self.n_anions} anions")
             self.logger.info(f"Box size: {self.parameters.box_size}")
 
@@ -64,8 +64,8 @@ class SaltWaterBoxGenerator:
     def _calculate_ion_numbers(self) -> None:
         """Calculate number of cations and anions from salt formula units."""
         n_cation_per_formula, n_anion_per_formula = get_salt_stoichiometry(self.parameters.salt_type)
-        self.n_cations = self.parameters.n_salt_molecules * n_cation_per_formula
-        self.n_anions = self.parameters.n_salt_molecules * n_anion_per_formula
+        self.n_cations = self.parameters.n_salt * n_cation_per_formula
+        self.n_anions = self.parameters.n_salt * n_anion_per_formula
 
     def _check_packmol(self) -> None:
         """Check if packmol is available."""
@@ -210,15 +210,15 @@ class SaltWaterBoxGenerator:
     def _calculate_water_molecules(self) -> int:
         """Calculate number of water molecules based on parameters."""
         # If explicitly specified, use that
-        if self.parameters.n_water_molecules is not None:
-            return self.parameters.n_water_molecules
+        if self.parameters.n_water is not None:
+            return self.parameters.n_water
 
         # Otherwise calculate from box size and density
         assert self.parameters.box_size is not None  # Validated earlier
         box_volume = np.prod(self.parameters.box_size)
 
         # Account for ion volume if requested
-        if self.parameters.include_salt_volume and self.parameters.n_salt_molecules > 0:
+        if self.parameters.include_salt_volume and self.parameters.n_salt > 0:
             # Calculate ion volumes using VDW radii
             cation_radius = self.salt_model["cation"]["vdw_radius"]
             anion_radius = self.salt_model["anion"]["vdw_radius"]
@@ -252,9 +252,9 @@ class SaltWaterBoxGenerator:
         return max(1, n_molecules)
 
     def _compute_box_size_from_molecules(self) -> None:
-        """Compute box size from n_water_molecules and density."""
-        if self.parameters.n_water_molecules is None:
-            raise ValueError("n_water_molecules must be provided when box_size is None")
+        """Compute box size from n_water and density."""
+        if self.parameters.n_water is None:
+            raise ValueError("n_water must be provided when box_size is None")
 
         # Determine density
         if self.parameters.density is not None:
@@ -266,14 +266,14 @@ class SaltWaterBoxGenerator:
         water_molar_mass = 18.015
         na = 6.022e23
 
-        moles = self.parameters.n_water_molecules / na
+        moles = self.parameters.n_water / na
         mass_g = moles * water_molar_mass
         water_volume_cm3 = mass_g / density
         water_volume_angstrom3 = water_volume_cm3 * 1e24
 
         # Add ion volume if requested
         total_volume = water_volume_angstrom3
-        if self.parameters.include_salt_volume and self.parameters.n_salt_molecules > 0:
+        if self.parameters.include_salt_volume and self.parameters.n_salt > 0:
             cation_radius = self.salt_model["cation"]["vdw_radius"]
             anion_radius = self.salt_model["anion"]["vdw_radius"]
 

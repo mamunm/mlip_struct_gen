@@ -25,9 +25,9 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
     """
     # Box size validation and normalization (same as water_box)
     if parameters.box_size is None:
-        # Box size will be computed from n_water_molecules
-        if parameters.n_water_molecules is None:
-            raise ValueError("Either box_size or n_water_molecules must be provided")
+        # Box size will be computed from n_water
+        if parameters.n_water is None:
+            raise ValueError("Either box_size or n_water must be provided")
         # box_size will be computed later in the generator
     elif isinstance(parameters.box_size, int | float):
         # Convert single number to cubic box
@@ -100,25 +100,25 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
         raise ValueError(f"Invalid water model: {e}") from e
 
     # Number of salt molecules validation
-    if not isinstance(parameters.n_salt_molecules, int):
-        raise TypeError("n_salt_molecules must be an integer")
+    if not isinstance(parameters.n_salt, int):
+        raise TypeError("n_salt must be an integer")
 
-    if parameters.n_salt_molecules < 0:
-        raise ValueError("n_salt_molecules must be non-negative")
+    if parameters.n_salt < 0:
+        raise ValueError("n_salt must be non-negative")
 
-    if parameters.n_salt_molecules > 100000:
-        raise ValueError("n_salt_molecules too large (>100000)")
+    if parameters.n_salt > 100000:
+        raise ValueError("n_salt too large (>100000)")
 
     # Number of water molecules validation
-    if parameters.n_water_molecules is not None:
-        if not isinstance(parameters.n_water_molecules, int):
-            raise TypeError("n_water_molecules must be an integer or None")
+    if parameters.n_water is not None:
+        if not isinstance(parameters.n_water, int):
+            raise TypeError("n_water must be an integer or None")
 
-        if parameters.n_water_molecules <= 0:
-            raise ValueError("n_water_molecules must be positive")
+        if parameters.n_water <= 0:
+            raise ValueError("n_water must be positive")
 
-        if parameters.n_water_molecules > 1000000:
-            raise ValueError("n_water_molecules too large (>1M)")
+        if parameters.n_water > 1000000:
+            raise ValueError("n_water too large (>1M)")
 
     # Density validation
     if parameters.density is not None:
@@ -139,21 +139,13 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
     # Valid combinations:
     # 1. box_size only (uses default density)
     # 2. box_size + density (custom density)
-    # 3. box_size + n_water_molecules (exact water molecules)
-    # 4. n_water_molecules only (uses default density to compute box)
-    # 5. n_water_molecules + density (computes box for molecules at density)
+    # 3. box_size + n_water (exact water molecules)
+    # 4. n_water only (uses default density to compute box)
+    # 5. n_water + density (computes box for molecules at density)
 
     # Invalid: all three specified
-    if parameters.box_size is not None and parameters.n_water_molecules is not None and parameters.density is not None:
-        raise ValueError("Cannot specify all three: box_size, n_water_molecules, and density. Choose at most two.")
-
-    # Ion parameters validation
-    if not isinstance(parameters.ion_parameters, str):
-        raise TypeError("ion_parameters must be a string")
-
-    valid_ion_params = ["joung-cheatham", "smith-dang"]
-    if parameters.ion_parameters not in valid_ion_params:
-        raise ValueError(f"Invalid ion_parameters '{parameters.ion_parameters}'. Valid: {', '.join(valid_ion_params)}")
+    if parameters.box_size is not None and parameters.n_water is not None and parameters.density is not None:
+        raise ValueError("Cannot specify all three: box_size, n_water, and density. Choose at most two.")
 
     # Volume handling validation
     if not isinstance(parameters.include_salt_volume, bool):
@@ -207,12 +199,12 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
             raise ImportError("MLIPLogger not available. Check utils.logger module.") from None
 
     # Check for reasonable salt concentration (only if box_size is provided)
-    if parameters.box_size is not None and parameters.n_salt_molecules > 0:
+    if parameters.box_size is not None and parameters.n_salt > 0:
         box_volume_L = np.prod(parameters.box_size) * 1e-27  # Å³ to L
 
         # Rough concentration check
         na = 6.022e23
-        concentration = parameters.n_salt_molecules / (na * box_volume_L)
+        concentration = parameters.n_salt / (na * box_volume_L)
 
         if concentration > 10.0:
             raise ValueError(

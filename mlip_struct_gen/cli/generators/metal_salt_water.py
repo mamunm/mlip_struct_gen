@@ -126,7 +126,7 @@ Output formats:
         help="Metal lattice constant in Angstroms (uses default if not specified)",
     )
     parser.add_argument(
-        "--gap-above-metal",
+        "--gap",
         type=float,
         default=0.0,
         help="Gap between metal surface and water in Angstroms (default: 0.0)",
@@ -195,7 +195,7 @@ def handle_command(args: argparse.Namespace) -> int:
             water_density=args.density,
             include_salt_volume=args.include_salt_volume,
             lattice_constant=args.lattice_constant,
-            gap_above_metal=args.gap_above_metal,
+            gap=args.gap,
             vacuum_above_water=args.vacuum,
             fix_bottom_layers=args.fix_bottom_layers,
             seed=args.seed,
@@ -327,7 +327,7 @@ Output formats:
         help="Metal lattice constant in Angstroms (uses default if not specified)",
     )
     parser.add_argument(
-        "--gap-above-metal",
+        "--gap",
         type=float,
         default=0.0,
         help="Gap between metal surface and water in Angstroms (default: 0.0)",

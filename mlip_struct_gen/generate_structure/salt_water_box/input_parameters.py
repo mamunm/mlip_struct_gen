@@ -14,7 +14,7 @@ class SaltWaterBoxGeneratorParameters:
 
     This dataclass defines all parameters needed to generate a salt water box
     (aqueous salt solution) using Packmol. Similar to water box generation,
-    you can specify any 2 of 3 parameters (box_size, n_water_molecules, density).
+    you can specify any 2 of 3 parameters (box_size, n_water, density).
 
     Args:
         output_file: Path to output file. Extension determines format if not specified.
@@ -22,10 +22,10 @@ class SaltWaterBoxGeneratorParameters:
         box_size: Box dimensions in Angstroms. Can be:
             - Single number (float): Creates cubic box
             - Tuple/list of 3 numbers: Creates rectangular box (x, y, z)
-            - None: Automatically computed from n_water_molecules and density
+            - None: Automatically computed from n_water and density
             Valid range: 10.0 - 1000.0 Å per dimension
 
-        n_water_molecules: Number of water molecules. If None, calculated
+        n_water: Number of water molecules. If None, calculated
             from box_size and density (accounting for ion volume if enabled).
             Valid range: 1 - 1,000,000 molecules
 
@@ -40,7 +40,7 @@ class SaltWaterBoxGeneratorParameters:
             - "CaCl2": Calcium chloride (2:1 ratio)
             - "MgCl2": Magnesium chloride (2:1 ratio)
 
-        n_salt_molecules: Number of salt formula units (e.g., for CaCl2,
+        n_salt: Number of salt formula units (e.g., for CaCl2,
             one formula unit = 1 Ca²⁺ + 2 Cl⁻).
             Valid range: 0 - 100000
 
@@ -50,10 +50,6 @@ class SaltWaterBoxGeneratorParameters:
 
         water_model: Water model for molecular geometry.
             Supported: "SPC/E" (default), "TIP3P", "TIP4P"
-
-        ion_parameters: Ion force field parameters. Options:
-            - "joung-cheatham": Joung-Cheatham parameters (default)
-            - "smith-dang": Smith-Dang parameters
 
         tolerance: Packmol tolerance in Angstroms.
             Valid range: 0.5 - 10.0 Å (typical: 1.5 - 2.5 Å)
@@ -77,7 +73,7 @@ class SaltWaterBoxGeneratorParameters:
         ...     box_size=40.0,
         ...     output_file="nacl_solution.data",
         ...     salt_type="NaCl",
-        ...     n_salt_molecules=100
+        ...     n_salt=100
         ... )
 
         CaCl2 with ion volume accounting:
@@ -85,18 +81,18 @@ class SaltWaterBoxGeneratorParameters:
         ...     box_size=50.0,
         ...     output_file="cacl2.xyz",
         ...     salt_type="CaCl2",
-        ...     n_salt_molecules=50,
+        ...     n_salt=50,
         ...     include_salt_volume=True,
         ...     output_format="xyz"
         ... )
 
         Specify water molecules and density (box computed):
         >>> params = SaltWaterBoxGeneratorParameters(
-        ...     n_water_molecules=1000,
+        ...     n_water=1000,
         ...     density=1.1,
         ...     output_file="salt_water.data",
         ...     salt_type="KCl",
-        ...     n_salt_molecules=30
+        ...     n_salt=30
         ... )
 
         High concentration with ion volume:
@@ -104,7 +100,7 @@ class SaltWaterBoxGeneratorParameters:
         ...     box_size=30.0,
         ...     output_file="concentrated.poscar",
         ...     salt_type="NaCl",
-        ...     n_salt_molecules=200,
+        ...     n_salt=200,
         ...     include_salt_volume=True,
         ...     output_format="poscar"
         ... )
@@ -115,19 +111,18 @@ class SaltWaterBoxGeneratorParameters:
 
     # Box parameters (pick any 2 of 3, same as water_box)
     box_size: Optional[float | tuple[float, float, float]] = None
-    n_water_molecules: Optional[int] = None
+    n_water: Optional[int] = None
     density: Optional[float] = None  # Total solution density in g/cm³
 
     # Salt parameters
     salt_type: str = "NaCl"
-    n_salt_molecules: int = 0  # Number of salt formula units
+    n_salt: int = 0  # Number of salt formula units
 
     # Volume handling
     include_salt_volume: bool = False  # Default: don't account for ion volume
 
     # Models
     water_model: str = "SPC/E"
-    ion_parameters: str = "joung-cheatham"
 
     # Packmol parameters
     tolerance: float = 2.0

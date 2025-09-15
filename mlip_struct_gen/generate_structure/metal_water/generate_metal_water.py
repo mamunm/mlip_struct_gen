@@ -73,8 +73,8 @@ class MetalWaterGenerator:
         if self.logger:
             self.logger.info("Initializing MetalWaterGenerator")
             self.logger.info(f"Metal: {self.parameters.metal}")
-            self.logger.info(f"Metal size: {self.parameters.metal_size}")
-            self.logger.info(f"Water molecules: {self.parameters.n_water_molecules}")
+            self.logger.info(f"Metal size: {self.parameters.size}")
+            self.logger.info(f"Water molecules: {self.parameters.n_water}")
             self.logger.info(f"Lattice constant: {self.lattice_constant:.3f} Å")
 
     def generate(self) -> str:
@@ -118,7 +118,7 @@ class MetalWaterGenerator:
 
     def _build_metal_surface(self) -> None:
         """Build the FCC(111) metal surface."""
-        nx, ny, nz = self.parameters.metal_size
+        nx, ny, nz = self.parameters.size
 
         if self.logger:
             self.logger.info(f"Creating {self.parameters.metal}(111) surface")
@@ -188,10 +188,10 @@ class MetalWaterGenerator:
         avogadro = 6.022e23  # molecules/mol
 
         # Convert density to g/Å³
-        density_g_A3 = self.parameters.water_density * 1e-24  # g/cm³ to g/Å³
+        density_g_A3 = self.parameters.density * 1e-24  # g/cm³ to g/Å³
 
         # Calculate mass of water
-        mass_g = self.parameters.n_water_molecules * water_mw / avogadro
+        mass_g = self.parameters.n_water * water_mw / avogadro
 
         # Calculate required volume
         volume_A3 = mass_g / density_g_A3
@@ -201,8 +201,8 @@ class MetalWaterGenerator:
 
         if self.logger:
             self.logger.info(
-                f"Water box height for {self.parameters.n_water_molecules} molecules "
-                f"at {self.parameters.water_density} g/cm³: {water_height:.2f} Å"
+                f"Water box height for {self.parameters.n_water} molecules "
+                f"at {self.parameters.density} g/cm³: {water_height:.2f} Å"
             )
 
         return water_height
@@ -246,7 +246,7 @@ output {water_output_path}
 seed {self.parameters.seed}
 
 structure {water_xyz_path}
-  number {self.parameters.n_water_molecules}
+  number {self.parameters.n_water}
   inside box {margin_xy} {margin_xy} {water_z_min} {water_x + margin_xy} {water_y + margin_xy} {water_z_max}
 end structure
 """

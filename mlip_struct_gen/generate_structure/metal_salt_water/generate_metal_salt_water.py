@@ -82,9 +82,9 @@ class MetalSaltWaterGenerator:
         if self.logger:
             self.logger.info("Initializing MetalSaltWaterGenerator")
             self.logger.info(f"Metal: {self.parameters.metal}")
-            self.logger.info(f"Metal size: {self.parameters.metal_size}")
-            self.logger.info(f"Salt: {self.parameters.salt_type} ({self.parameters.n_salt_molecules} formula units)")
-            self.logger.info(f"Water molecules: {self.parameters.n_water_molecules}")
+            self.logger.info(f"Metal size: {self.parameters.size}")
+            self.logger.info(f"Salt: {self.parameters.salt_type} ({self.parameters.n_salt} formula units)")
+            self.logger.info(f"Water molecules: {self.parameters.n_water}")
             self.logger.info(f"Lattice constant: {self.lattice_constant:.3f} Å")
 
     def generate(self) -> str:
@@ -128,7 +128,7 @@ class MetalSaltWaterGenerator:
 
     def _build_metal_surface(self) -> None:
         """Build the FCC(111) metal surface."""
-        nx, ny, nz = self.parameters.metal_size
+        nx, ny, nz = self.parameters.size
 
         if self.logger:
             self.logger.info(f"Creating {self.parameters.metal}(111) surface")
@@ -198,17 +198,17 @@ class MetalSaltWaterGenerator:
         avogadro = 6.022e23  # molecules/mol
 
         # Calculate total mass
-        total_mass_g = self.parameters.n_water_molecules * water_mw / avogadro
+        total_mass_g = self.parameters.n_water * water_mw / avogadro
 
         # Add ion masses if include_salt_volume is True
-        if self.parameters.include_salt_volume and self.parameters.n_salt_molecules > 0:
+        if self.parameters.include_salt_volume and self.parameters.n_salt > 0:
             # Get ion parameters
             cation_params = get_ion_params(self.salt_info["cation"])
             anion_params = get_ion_params(self.salt_info["anion"])
 
             # Calculate ion contributions
-            n_cations = self.parameters.n_salt_molecules * self.salt_info["cation_count"]
-            n_anions = self.parameters.n_salt_molecules * self.salt_info["anion_count"]
+            n_cations = self.parameters.n_salt * self.salt_info["cation_count"]
+            n_anions = self.parameters.n_salt * self.salt_info["anion_count"]
 
             cation_mass = n_cations * cation_params["mass"] / avogadro
             anion_mass = n_anions * anion_params["mass"] / avogadro
@@ -216,7 +216,7 @@ class MetalSaltWaterGenerator:
             total_mass_g += cation_mass + anion_mass
 
         # Convert density to g/Å³
-        density_g_A3 = self.parameters.water_density * 1e-24  # g/cm³ to g/Å³
+        density_g_A3 = self.parameters.density * 1e-24  # g/cm³ to g/Å³
 
         # Calculate required volume
         volume_A3 = total_mass_g / density_g_A3
@@ -227,14 +227,14 @@ class MetalSaltWaterGenerator:
         if self.logger:
             if self.parameters.include_salt_volume:
                 self.logger.info(
-                    f"Solution box height for {self.parameters.n_water_molecules} water + "
-                    f"{self.parameters.n_salt_molecules} {self.parameters.salt_type} "
-                    f"at {self.parameters.water_density} g/cm^3: {solution_height:.2f} Å"
+                    f"Solution box height for {self.parameters.n_water} water + "
+                    f"{self.parameters.n_salt} {self.parameters.salt_type} "
+                    f"at {self.parameters.density} g/cm^3: {solution_height:.2f} Å"
                 )
             else:
                 self.logger.info(
-                    f"Solution box height for {self.parameters.n_water_molecules} water molecules "
-                    f"at {self.parameters.water_density} g/cm^3: {solution_height:.2f} Å"
+                    f"Solution box height for {self.parameters.n_water} water molecules "
+                    f"at {self.parameters.density} g/cm^3: {solution_height:.2f} Å"
                 )
 
         return solution_height
@@ -260,8 +260,8 @@ class MetalSaltWaterGenerator:
 
         solution_x = self.box_dimensions['x'] - 2 * margin_xy
         solution_y = self.box_dimensions['y'] - 2 * margin_xy
-        solution_z_min = metal_cell_z + self.parameters.gap_above_metal + margin_z_bottom
-        solution_z_max = metal_cell_z + self.parameters.gap_above_metal + solution_height - margin_z_top
+        solution_z_min = metal_cell_z + self.parameters.gap + margin_z_bottom
+        solution_z_max = metal_cell_z + self.parameters.gap + solution_height - margin_z_top
 
         # Create molecule files
         water_xyz_path = os.path.join(tmpdir, 'water_molecule.xyz')
@@ -280,16 +280,16 @@ seed {self.parameters.seed}
 
 # Water molecules
 structure {water_xyz_path}
-  number {self.parameters.n_water_molecules}
+  number {self.parameters.n_water}
   inside box {margin_xy} {margin_xy} {solution_z_min} {solution_x + margin_xy} {solution_y + margin_xy} {solution_z_max}
 end structure
 """
 
         # Add salt ions if present
-        if self.parameters.n_salt_molecules > 0:
+        if self.parameters.n_salt > 0:
             # Calculate number of each ion type
-            n_cations = self.parameters.n_salt_molecules * self.salt_info["cation_count"]
-            n_anions = self.parameters.n_salt_molecules * self.salt_info["anion_count"]
+            n_cations = self.parameters.n_salt * self.salt_info["cation_count"]
+            n_anions = self.parameters.n_salt * self.salt_info["anion_count"]
 
             # Create ion files
             cation_xyz_path = os.path.join(tmpdir, f'{self.salt_info["cation"]}.xyz')
@@ -320,7 +320,7 @@ end structure
             self.logger.info(f"Solution box: x=[{margin_xy:.1f}, {solution_x + margin_xy:.1f}], "
                            f"y=[{margin_xy:.1f}, {solution_y + margin_xy:.1f}], "
                            f"z=[{solution_z_min:.2f}, {solution_z_max:.2f}]")
-            if self.parameters.n_salt_molecules > 0:
+            if self.parameters.n_salt > 0:
                 self.logger.info(f"  Ions: {n_cations} {self.salt_info['cation']}+ and {n_anions} {self.salt_info['anion']}-")
 
         # Run PACKMOL
@@ -414,7 +414,7 @@ H   -0.8164    0.0000    0.5773
         symbols = self.solution_atoms.get_chemical_symbols()
         n_water = symbols.count('O')
 
-        if self.parameters.n_salt_molecules > 0:
+        if self.parameters.n_salt > 0:
             n_cations = symbols.count(self.salt_info["cation"])
             n_anions = symbols.count(self.salt_info["anion"])
 
@@ -438,7 +438,7 @@ H   -0.8164    0.0000    0.5773
         
         metal_cell_z = self.metal_slab.get_cell()[2, 2]
         solution_height = self._calculate_solution_height()
-        total_height = metal_cell_z + solution_height + self.parameters.gap_above_metal
+        total_height = metal_cell_z + solution_height + self.parameters.gap
 
         # Update cell z-dimension
         cell = self.combined_system.get_cell()
@@ -524,7 +524,7 @@ H   -0.8164    0.0000    0.5773
         element_counts = [symbols.count(self.parameters.metal)]
 
         # Add ions if present
-        if self.parameters.n_salt_molecules > 0:
+        if self.parameters.n_salt > 0:
             element_order.append(self.salt_info["cation"])
             element_counts.append(symbols.count(self.salt_info["cation"]))
             element_order.append(self.salt_info["anion"])
@@ -590,7 +590,7 @@ H   -0.8164    0.0000    0.5773
         # Count ions
         n_cations = 0
         n_anions = 0
-        if self.parameters.n_salt_molecules > 0:
+        if self.parameters.n_salt > 0:
             n_cations = symbols.count(self.salt_info["cation"])
             n_anions = symbols.count(self.salt_info["anion"])
 
@@ -601,7 +601,7 @@ H   -0.8164    0.0000    0.5773
 
         # Determine number of atom types
         n_atom_types = 3  # Metal, O, H
-        if self.parameters.n_salt_molecules > 0:
+        if self.parameters.n_salt > 0:
             n_atom_types = 5  # Metal, Cation, Anion, O, H
 
         # Get atomic masses
@@ -612,7 +612,7 @@ H   -0.8164    0.0000    0.5773
         # Get ion parameters
         cation_params = None
         anion_params = None
-        if self.parameters.n_salt_molecules > 0:
+        if self.parameters.n_salt > 0:
             cation_params = get_ion_params(self.salt_info["cation"])
             anion_params = get_ion_params(self.salt_info["anion"])
 
@@ -650,7 +650,7 @@ H   -0.8164    0.0000    0.5773
 
             # Masses
             f.write("Masses\n\n")
-            if self.parameters.n_salt_molecules > 0:
+            if self.parameters.n_salt > 0:
                 # With ions: 1=Metal, 2=Cation, 3=Anion, 4=O, 5=H
                 f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
                 f.write(f"2 {cation_params['mass']:.4f}  # {self.salt_info['cation']}\n")
@@ -679,7 +679,7 @@ H   -0.8164    0.0000    0.5773
                     atom_id += 1
 
             # Write ions if present (each ion gets its own molecule ID)
-            if self.parameters.n_salt_molecules > 0:
+            if self.parameters.n_salt > 0:
                 # Cations
                 for i in range(len(symbols)):
                     if symbols[i] == self.salt_info["cation"]:
@@ -697,8 +697,8 @@ H   -0.8164    0.0000    0.5773
                         atom_id += 1
 
             # Determine atom types for water
-            o_type = 4 if self.parameters.n_salt_molecules > 0 else 2
-            h_type = 5 if self.parameters.n_salt_molecules > 0 else 3
+            o_type = 4 if self.parameters.n_salt > 0 else 2
+            h_type = 5 if self.parameters.n_salt > 0 else 3
 
             # Write water molecules
             mol_id += 1

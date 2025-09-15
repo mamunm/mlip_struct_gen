@@ -20,9 +20,9 @@ class WaterBoxGeneratorParameters:
         box_size: Box dimensions in Angstroms. Can be:
             - Single number (float): Creates cubic box with size x size x size
             - Tuple/list of 3 numbers: Creates rectangular box (x, y, z)
-            - None: Automatically computed from n_molecules and density
+            - None: Automatically computed from n_water and density
             Valid range: 5.0 - 1000.0 Å per dimension
-            Note: Either box_size OR n_molecules must be provided
+            Note: Either box_size OR n_water must be provided
 
         output_file: Path to output file. Must include file extension (e.g., '.xyz').
             The output directory will be created if it doesn't exist.
@@ -33,7 +33,7 @@ class WaterBoxGeneratorParameters:
             - "TIP3P": Transferable Intermolecular Potential 3-Point model
             - "TIP4P": Transferable Intermolecular Potential 4-Point model
 
-        n_molecules: Number of water molecules to pack. If None, calculated
+        n_water: Number of water molecules to pack. If None, calculated
             automatically from box_size and density. Can be combined with
             density to compute box_size, or with box_size to pack exact
             number of molecules.
@@ -41,8 +41,8 @@ class WaterBoxGeneratorParameters:
 
         density: Water density in g/cm³. If None, uses the default density
             for the chosen water model. Can be combined with:
-            - box_size: to calculate n_molecules at specified density
-            - n_molecules: to compute box_size for exact n_molecules at density
+            - box_size: to calculate n_water at specified density
+            - n_water: to compute box_size for exact n_water at density
             Valid range: 0.1 - 5.0 g/cm³
             Model defaults: SPC/E=0.997, TIP3P=0.997, TIP4P=0.997 g/cm³
 
@@ -97,7 +97,7 @@ class WaterBoxGeneratorParameters:
         Create box with specific number of molecules (uses default density):
         >>> params = WaterBoxGeneratorParameters(
         ...     output_file="water_box.xyz",
-        ...     n_molecules=500,
+        ...     n_water=500,
         ...     tolerance=1.5,
         ...     seed=42
         ... )
@@ -105,7 +105,7 @@ class WaterBoxGeneratorParameters:
         Create box with specific n_molecules at custom density (box computed):
         >>> params = WaterBoxGeneratorParameters(
         ...     output_file="water_box.xyz",
-        ...     n_molecules=500,
+        ...     n_water=500,
         ...     density=1.1,  # Custom density, box size computed
         ...     tolerance=1.5,
         ...     seed=42
@@ -137,7 +137,7 @@ class WaterBoxGeneratorParameters:
     output_file: str
     box_size: float | tuple[float, float, float] | None = None
     water_model: str = "SPC/E"
-    n_molecules: int | None = None
+    n_water: int | None = None
     density: float | None = None
     tolerance: float = 2.0
     seed: int = 12345
