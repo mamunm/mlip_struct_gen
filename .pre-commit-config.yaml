@@ -1,0 +1,73 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: ['--config=pyproject.toml']
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.13
+    hooks:
+      - id: ruff
+        args: ['--fix', '--exit-non-zero-on-fix']
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all, numpy]
+        args: ['--config-file=pyproject.toml']
+        pass_filenames: false
+        language_version: python3.11
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile', 'black', '--line-length', '100']
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        args: ['--skip', '*.ipynb,*.json,*.csv']
+        additional_dependencies:
+          - tomli
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-use-type-annotations
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.0
+    hooks:
+      - id: pyupgrade
+        args: ['--py311-plus']
+
+# Configuration for pre-commit CI
+ci:
+  autoupdate_schedule: monthly
+  skip: [mypy]  # mypy can be slow in CI
