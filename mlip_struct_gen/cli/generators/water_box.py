@@ -292,15 +292,133 @@ def main() -> int:
         prog="mlip-water-box",
         description="Generate water box structures using Packmol",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Parameter Combinations:
+  You can specify any 2 of these 3 parameters:
+    - box-size: Dimensions of the simulation box
+    - n-molecules: Number of water molecules
+    - density: Water density in g/cm³
+
+Examples:
+  1. Box size only (uses default density):
+     mlip-water-box --box-size 30 --output water.xyz
+
+  2. Box size + custom density:
+     mlip-water-box --box-size 30 --density 1.1 --output water.data
+
+  3. Box size + exact molecules:
+     mlip-water-box --box-size 30 --n-molecules 500 --output water.xyz
+
+  4. Number of molecules only (computes box):
+     mlip-water-box --n-molecules 1000 --output water.data
+
+  5. Molecules + density (computes box):
+     mlip-water-box --n-molecules 500 --density 0.92 --output ice.xyz
+        """,
+    )
+
+    # Required arguments
+    parser.add_argument(
+        "--output", "-o",
+        type=str,
+        required=True,
+        help="Output file path (e.g., water.xyz, water.data, POSCAR)",
+    )
+
+    # Box size (can be 1 or 3 values)
+    parser.add_argument(
+        "--box-size", "-b",
+        type=float,
+        nargs="+",
+        metavar="SIZE",
+        help="Box dimensions in Angstroms. Single value for cubic box, or 3 values for rectangular (x y z)",
+    )
+
+    # Number of molecules
+    parser.add_argument(
+        "--n-molecules", "-n",
+        type=int,
+        metavar="N",
+        help="Number of water molecules to generate",
+    )
+
+    # Density
+    parser.add_argument(
+        "--density", "-d",
+        type=float,
+        metavar="RHO",
+        help="Water density in g/cm³ (default: model-specific, ~0.997)",
+    )
+
+    # Water model
+    parser.add_argument(
+        "--water-model", "-m",
+        type=str,
+        choices=["SPC/E", "TIP3P", "TIP4P"],
+        default="SPC/E",
+        help="Water model to use (default: SPC/E)",
+    )
+
+    # Output format
+    parser.add_argument(
+        "--output-format", "-f",
+        type=str,
+        choices=["xyz", "lammps", "poscar"],
+        help="Output file format. If not specified, inferred from file extension",
+    )
+
+    # Packmol parameters
+    parser.add_argument(
+        "--tolerance", "-t",
+        type=float,
+        default=2.0,
+        metavar="TOL",
+        help="Packmol tolerance in Angstroms (default: 2.0)",
+    )
+
+    parser.add_argument(
+        "--seed", "-s",
+        type=int,
+        default=12345,
+        help="Random seed for reproducibility (default: 12345)",
+    )
+
+    # Packmol executable
+    parser.add_argument(
+        "--packmol-executable",
+        type=str,
+        default="packmol",
+        help="Path to packmol executable (default: packmol)",
+    )
+
+    # Logging and output control
+    parser.add_argument(
+        "--log", "-l",
+        action="store_true",
+        help="Enable detailed logging",
+    )
+
+    parser.add_argument(
+        "--save-artifacts",
+        action="store_true",
+        help="Save intermediate files (packmol.inp, water.xyz) in 'artifacts' directory",
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be generated without actually running",
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite output file if it exists",
     )
 
     # Add verbose/quiet flags for standalone
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     parser.add_argument("--quiet", "-q", action="store_true", help="Suppress output")
-
-    # Use the same parser setup
-    subparsers = parser.add_subparsers()
-    add_parser(subparsers)
 
     args = parser.parse_args()
     return handle_command(args)
