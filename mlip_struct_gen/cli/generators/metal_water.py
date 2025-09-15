@@ -114,7 +114,7 @@ Examples:
     parser.add_argument(
         "--gap", "-g",
         type=float,
-        default=3.0,
+        default=0.0,
         metavar="GAP",
         help="Gap between metal surface and water in Angstroms (default: 3.0)",
     )
@@ -298,10 +298,10 @@ def handle_command(args: argparse.Namespace) -> int:
         print(f"  Water molecules: {args.n_water}")
         print(f"  Water model: {args.water_model}")
         print(f"  Water density: {args.water_density} g/cm^3")
-        print(f"  Gap above metal: {args.gap} �")
-        print(f"  Vacuum above water: {args.vacuum} �")
+        print(f"  Gap above metal: {args.gap} Angstroms")
+        print(f"  Vacuum above water: {args.vacuum} Angstroms")
         if args.lattice_constant:
-            print(f"  Lattice constant: {args.lattice_constant} �")
+            print(f"  Lattice constant: {args.lattice_constant} Angstroms")
         if args.fix_bottom_layers > 0:
             print(f"  Fixed bottom layers: {args.fix_bottom_layers}")
         print(f"  Output: {args.output}")
@@ -451,22 +451,22 @@ Examples:
     parser.add_argument(
         "--gap", "-g",
         type=float,
-        default=3.0,
-        help="Gap between metal and water in � (default: 3.0)",
+        default=0.0,
+        help="Gap between metal and water in Angstroms (default: 0.0)",
     )
 
     parser.add_argument(
         "--vacuum", "-v",
         type=float,
         default=0.0,
-        help="Vacuum above water in � (default: 0.0)",
+        help="Vacuum above water in Angstroms (default: 0.0)",
     )
 
     # Optional parameters
     parser.add_argument(
         "--lattice-constant", "-a",
         type=float,
-        help="Custom lattice constant in �",
+        help="Custom lattice constant in Angstroms",
     )
 
     parser.add_argument(
@@ -488,7 +488,7 @@ Examples:
         "--packmol-tolerance", "-t",
         type=float,
         default=2.0,
-        help="Packmol tolerance in � (default: 2.0)",
+        help="Packmol tolerance in Angstroms (default: 2.0)",
     )
 
     parser.add_argument(

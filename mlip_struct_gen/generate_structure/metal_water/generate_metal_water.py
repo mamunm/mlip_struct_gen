@@ -223,8 +223,8 @@ class MetalWaterGenerator:
 
         # Set margins for water box
         margin_xy = 1.0  # margin from box edges in x and y
-        margin_z_bottom = 1.0  # additional margin from metal top
-        margin_z_top = 1.0  # margin from water top to boundary
+        margin_z_bottom = 3.0  # additional margin from metal top
+        margin_z_top = 3.0  # margin from water top to boundary
 
         water_x = self.box_dimensions['x'] - 2 * margin_xy
         water_y = self.box_dimensions['y'] - 2 * margin_xy
@@ -343,20 +343,13 @@ H   -0.8164    0.0000    0.5773
         if self.combined_system is None:
             raise ValueError("Combine metal and water first")
 
-        # Get all positions
-        positions = self.combined_system.get_positions()
-        symbols = self.combined_system.get_chemical_symbols()
-
-        # Find the top of water
-        water_positions = positions[np.array(symbols) != self.parameters.metal]
-        if len(water_positions) > 0:
-            water_top = np.max(water_positions[:, 2])
-        else:
-            water_top = np.max(positions[:, 2])
+        metal_cell_z = self.metal_slab.get_cell()[2, 2]
+        water_height = self._calculate_water_height()
+        total_height = metal_cell_z + water_height + self.parameters.gap_above_metal
 
         # Update cell z-dimension
         cell = self.combined_system.get_cell()
-        total_height = water_top + self.parameters.vacuum_above_water
+        total_height = total_height + self.parameters.vacuum_above_water
         cell[2, 2] = total_height
         self.combined_system.set_cell(cell)
 

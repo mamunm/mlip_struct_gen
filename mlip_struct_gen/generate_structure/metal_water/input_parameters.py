@@ -118,7 +118,7 @@ class MetalWaterParameters:
     n_water_molecules: int
     output_file: str
     water_density: float = 1.0  # g/cm³
-    gap_above_metal: float = 3.0  # Angstroms
+    gap_above_metal: float = 0.0  # Angstroms
     vacuum_above_water: float = 0.0  # Angstroms
     water_model: str = "SPC/E"
     lattice_constant: Optional[float] = None

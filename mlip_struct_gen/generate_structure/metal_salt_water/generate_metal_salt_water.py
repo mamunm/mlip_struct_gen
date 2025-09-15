@@ -255,8 +255,8 @@ class MetalSaltWaterGenerator:
 
         # Set margins for solution box
         margin_xy = 1.0  # margin from box edges in x and y
-        margin_z_bottom = 1.0  # additional margin from metal top
-        margin_z_top = 1.0  # margin from solution top to boundary
+        margin_z_bottom = 3.0  # additional margin from metal top
+        margin_z_top = 3.0  # margin from solution top to boundary
 
         solution_x = self.box_dimensions['x'] - 2 * margin_xy
         solution_y = self.box_dimensions['y'] - 2 * margin_xy
@@ -435,21 +435,14 @@ H   -0.8164    0.0000    0.5773
         """Adjust the cell to have exact vacuum above the solution layer."""
         if self.combined_system is None:
             raise ValueError("Combine metal and solution first")
-
-        # Get all positions
-        positions = self.combined_system.get_positions()
-        symbols = self.combined_system.get_chemical_symbols()
-
-        # Find the top of solution
-        solution_positions = positions[np.array(symbols) != self.parameters.metal]
-        if len(solution_positions) > 0:
-            solution_top = np.max(solution_positions[:, 2])
-        else:
-            solution_top = np.max(positions[:, 2])
+        
+        metal_cell_z = self.metal_slab.get_cell()[2, 2]
+        solution_height = self._calculate_solution_height()
+        total_height = metal_cell_z + solution_height + self.parameters.gap_above_metal
 
         # Update cell z-dimension
         cell = self.combined_system.get_cell()
-        total_height = solution_top + self.parameters.vacuum_above_water
+        total_height = total_height + self.parameters.vacuum_above_water
         cell[2, 2] = total_height
         self.combined_system.set_cell(cell)
 
