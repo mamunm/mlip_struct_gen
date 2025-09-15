@@ -51,7 +51,7 @@ class MetalSaltWaterParameters:
             otherwise it's just the water density.
 
         gap_above_metal: Gap between the top of the metal surface and the bottom
-            of the solution layer in Angstroms. Default: 3.0 Angstroms
+            of the solution layer in Angstroms. Default: 0.0 Angstroms
 
         vacuum_above_water: Vacuum space above the solution layer in Angstroms.
             Creates empty space for simulations. Default: 0.0 Angstroms
@@ -148,7 +148,7 @@ class MetalSaltWaterParameters:
     output_file: str
     include_salt_volume: bool = False
     water_density: float = 1.0  # g/cm^3
-    gap_above_metal: float = 3.0  # Angstroms
+    gap_above_metal: float = 0.0  # Angstroms
     vacuum_above_water: float = 0.0  # Angstroms
     water_model: str = "SPC/E"
     lattice_constant: Optional[float] = None

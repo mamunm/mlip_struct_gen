@@ -24,6 +24,7 @@ mlip-water-box = "mlip_struct_gen.cli.generators.water_box:main"
 mlip-salt-water-box = "mlip_struct_gen.cli.generators.salt_water_box:main"
 mlip-metal-surface = "mlip_struct_gen.cli.generators.metal_surface:main"
 mlip-metal-water = "mlip_struct_gen.cli.generators.metal_water:main"
+mlip-metal-salt-water = "mlip_struct_gen.cli.generators.metal_salt_water:main"
 
 [project.optional-dependencies]
 dev = [

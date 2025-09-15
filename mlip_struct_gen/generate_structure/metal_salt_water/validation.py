@@ -199,7 +199,7 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
         print(f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Angstroms) may result in poor packing")
 
     # Validate seed
-    if params.seed < 0:
+    if params.seed is not None and params.seed < 0:
         raise ValueError(f"seed ({params.seed}) must be non-negative")
 
     # Validate output file
