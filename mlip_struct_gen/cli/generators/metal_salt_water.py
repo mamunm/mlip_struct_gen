@@ -3,18 +3,15 @@
 
 import argparse
 import sys
-from pathlib import Path
-from typing import Optional
 
-from mlip_struct_gen.generate_structure.metal_salt_water.input_parameters import (
-    MetalSaltWaterParameters,
-)
-from mlip_struct_gen.generate_structure.metal_salt_water.validation import (
-    validate_parameters,
-)
 from mlip_struct_gen.generate_structure.metal_salt_water.generate_metal_salt_water import (
     MetalSaltWaterGenerator,
 )
+from mlip_struct_gen.generate_structure.metal_salt_water.input_parameters import (
+    MetalSaltWaterParameters,
+)
+from mlip_struct_gen.generate_structure.metal_salt_water.validation import validate_parameters
+from mlip_struct_gen.utils.json_utils import save_parameters_to_json
 
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -169,6 +166,11 @@ Output formats:
         choices=["xyz", "vasp", "poscar", "lammps", "data"],
         help="Output file format (overrides extension detection)",
     )
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
+    )
 
     parser.set_defaults(func=handle_command)
 
@@ -210,6 +212,10 @@ def handle_command(args: argparse.Namespace) -> int:
             error_message = str(e)
             print(f"Error: {error_message}", file=sys.stderr)
             return 1
+
+        # Save input parameters if requested
+        if getattr(args, "save_input", False):
+            save_parameters_to_json(params)
 
         # Generate structure
         generator = MetalSaltWaterGenerator(params)
@@ -369,6 +375,11 @@ Output formats:
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "data"],
         help="Output file format (overrides extension detection)",
+    )
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
     )
 
     args = parser.parse_args()

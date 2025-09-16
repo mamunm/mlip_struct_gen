@@ -21,7 +21,6 @@ repos:
     rev: 24.1.0
     hooks:
       - id: black
-        language_version: python3.11
         args: ['--config=pyproject.toml']
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -35,10 +34,9 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all, numpy]
+        additional_dependencies: [numpy]
         args: ['--config-file=pyproject.toml']
         pass_filenames: false
-        language_version: python3.11
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -65,7 +63,7 @@ repos:
     rev: v3.15.0
     hooks:
       - id: pyupgrade
-        args: ['--py311-plus']
+        args: ['--py312-plus']
 
 # Configuration for pre-commit CI
 ci:

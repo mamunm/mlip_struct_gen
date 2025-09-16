@@ -4,10 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from ...generate_structure.metal_surface import (
-    MetalSurfaceGenerator,
-    MetalSurfaceParameters,
-)
+from ...generate_structure.metal_surface import MetalSurfaceGenerator, MetalSurfaceParameters
+from ...utils.json_utils import save_parameters_to_json
 from ...utils.logger import MLIPLogger
 
 
@@ -55,7 +53,8 @@ Examples:
 
     # Required arguments
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         required=True,
         help="Output file path (e.g., metal.xyz, metal.data, POSCAR)",
@@ -63,7 +62,8 @@ Examples:
 
     # Metal selection
     parser.add_argument(
-        "--metal", "-m",
+        "--metal",
+        "-m",
         type=str,
         default="Pt",
         choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
@@ -72,7 +72,8 @@ Examples:
 
     # Size parameters
     parser.add_argument(
-        "--size", "-s",
+        "--size",
+        "-s",
         type=int,
         nargs=3,
         default=[4, 4, 4],
@@ -82,7 +83,8 @@ Examples:
 
     # Vacuum
     parser.add_argument(
-        "--vacuum", "-v",
+        "--vacuum",
+        "-v",
         type=float,
         default=15.0,
         metavar="VACUUM",
@@ -91,7 +93,8 @@ Examples:
 
     # Optional parameters
     parser.add_argument(
-        "--lattice-constant", "-a",
+        "--lattice-constant",
+        "-a",
         type=float,
         metavar="A",
         help="Custom lattice constant in Angstroms (uses default if not specified)",
@@ -121,7 +124,8 @@ Examples:
 
     # Output format
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "data"],
         help="Output file format. If not specified, inferred from extension",
@@ -129,7 +133,8 @@ Examples:
 
     # Options
     parser.add_argument(
-        "--log", "-l",
+        "--log",
+        "-l",
         action="store_true",
         help="Enable detailed logging",
     )
@@ -146,6 +151,12 @@ Examples:
         help="Overwrite output file if it exists",
     )
 
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
+    )
+
 
 def validate_args(args: argparse.Namespace) -> None:
     """
@@ -160,7 +171,10 @@ def validate_args(args: argparse.Namespace) -> None:
     # Check output file
     output_path = Path(args.output)
     if output_path.exists() and not args.force:
-        print(f"Error: Output file '{args.output}' already exists. Use --force to overwrite", file=sys.stderr)
+        print(
+            f"Error: Output file '{args.output}' already exists. Use --force to overwrite",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Validate size
@@ -179,11 +193,17 @@ def validate_args(args: argparse.Namespace) -> None:
 
     # Validate fix_bottom_layers
     if args.fix_bottom_layers < 0:
-        print(f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative", file=sys.stderr)
+        print(
+            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if args.fix_bottom_layers >= nz:
-        print(f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})", file=sys.stderr)
+        print(
+            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Validate vacuum
@@ -193,7 +213,9 @@ def validate_args(args: argparse.Namespace) -> None:
 
     # Validate lattice constant if provided
     if args.lattice_constant is not None and args.lattice_constant <= 0:
-        print(f"Error: --lattice-constant ({args.lattice_constant}) must be positive", file=sys.stderr)
+        print(
+            f"Error: --lattice-constant ({args.lattice_constant}) must be positive", file=sys.stderr
+        )
         sys.exit(1)
 
     # Infer output format from extension if not specified
@@ -209,7 +231,10 @@ def validate_args(args: argparse.Namespace) -> None:
             # Default to xyz
             args.output_format = "xyz"
             if args.log:
-                print(f"Warning: Could not infer format from '{suffix}', using XYZ format", file=sys.stderr)
+                print(
+                    f"Warning: Could not infer format from '{suffix}', using XYZ format",
+                    file=sys.stderr,
+                )
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -258,16 +283,20 @@ def handle_command(args: argparse.Namespace) -> int:
             logger=logger,
         )
 
+        # Save input parameters if requested
+        if getattr(args, "save_input", False):
+            save_parameters_to_json(params)
+
         # Create generator
         generator = MetalSurfaceGenerator(params)
 
         # Generate surface
-        if not getattr(args, 'quiet', False):
+        if not getattr(args, "quiet", False):
             print(f"Generating {args.metal}(111) surface...")
 
         output_file = generator.generate()
 
-        if not getattr(args, 'quiet', False):
+        if not getattr(args, "quiet", False):
             print(f"Successfully generated: {output_file}")
 
             # Print summary
@@ -281,8 +310,9 @@ def handle_command(args: argparse.Namespace) -> int:
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        if getattr(args, 'verbose', False):
+        if getattr(args, "verbose", False):
             import traceback
+
             traceback.print_exc()
         return 1
 
@@ -323,7 +353,8 @@ Examples:
 
     # Required arguments
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         required=True,
         help="Output file path (e.g., metal.xyz, metal.data, POSCAR)",
@@ -331,7 +362,8 @@ Examples:
 
     # Metal selection
     parser.add_argument(
-        "--metal", "-m",
+        "--metal",
+        "-m",
         type=str,
         default="Pt",
         choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
@@ -340,7 +372,8 @@ Examples:
 
     # Size parameters
     parser.add_argument(
-        "--size", "-s",
+        "--size",
+        "-s",
         type=int,
         nargs=3,
         default=[4, 4, 4],
@@ -350,7 +383,8 @@ Examples:
 
     # Vacuum
     parser.add_argument(
-        "--vacuum", "-v",
+        "--vacuum",
+        "-v",
         type=float,
         default=15.0,
         metavar="VACUUM",
@@ -359,7 +393,8 @@ Examples:
 
     # Optional parameters
     parser.add_argument(
-        "--lattice-constant", "-a",
+        "--lattice-constant",
+        "-a",
         type=float,
         metavar="A",
         help="Custom lattice constant in Angstroms",
@@ -389,7 +424,8 @@ Examples:
 
     # Output format
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "data"],
         help="Output file format",
@@ -397,7 +433,8 @@ Examples:
 
     # Options
     parser.add_argument(
-        "--log", "-l",
+        "--log",
+        "-l",
         action="store_true",
         help="Enable detailed logging",
     )
@@ -412,6 +449,12 @@ Examples:
         "--force",
         action="store_true",
         help="Overwrite output file if it exists",
+    )
+
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
     )
 
     args = parser.parse_args()

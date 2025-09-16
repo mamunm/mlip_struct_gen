@@ -4,10 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from ...generate_structure.metal_water import (
-    MetalWaterGenerator,
-    MetalWaterParameters,
-)
+from ...generate_structure.metal_water import MetalWaterGenerator, MetalWaterParameters
+from ...utils.json_utils import save_parameters_to_json
 from ...utils.logger import MLIPLogger
 
 
@@ -61,7 +59,8 @@ Examples:
 
     # Required arguments
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         required=True,
         help="Output file path (e.g., metal_water.xyz, metal_water.data, POSCAR)",
@@ -69,7 +68,8 @@ Examples:
 
     # Metal parameters
     parser.add_argument(
-        "--metal", "-m",
+        "--metal",
+        "-m",
         type=str,
         default="Pt",
         choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
@@ -87,7 +87,8 @@ Examples:
 
     # Water parameters
     parser.add_argument(
-        "--n-water", "-n",
+        "--n-water",
+        "-n",
         type=int,
         required=True,
         metavar="N",
@@ -95,7 +96,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--density", "-d",
+        "--density",
+        "-d",
         type=float,
         default=1.0,
         metavar="RHO",
@@ -103,7 +105,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--water-model", "-w",
+        "--water-model",
+        "-w",
         type=str,
         choices=["SPC/E", "TIP3P", "TIP4P"],
         default="SPC/E",
@@ -112,7 +115,8 @@ Examples:
 
     # Interface parameters
     parser.add_argument(
-        "--gap", "-g",
+        "--gap",
+        "-g",
         type=float,
         default=0.0,
         metavar="GAP",
@@ -120,7 +124,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--vacuum", "-v",
+        "--vacuum",
+        "-v",
         type=float,
         default=0.0,
         metavar="VACUUM",
@@ -129,7 +134,8 @@ Examples:
 
     # Optional parameters
     parser.add_argument(
-        "--lattice-constant", "-a",
+        "--lattice-constant",
+        "-a",
         type=float,
         metavar="A",
         help="Custom lattice constant in Angstroms (uses default if not specified)",
@@ -152,7 +158,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--packmol-tolerance", "-t",
+        "--packmol-tolerance",
+        "-t",
         type=float,
         default=2.0,
         metavar="TOL",
@@ -168,7 +175,8 @@ Examples:
 
     # Output format
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "data"],
         help="Output file format. If not specified, inferred from extension",
@@ -176,7 +184,8 @@ Examples:
 
     # Options
     parser.add_argument(
-        "--log", "-l",
+        "--log",
+        "-l",
         action="store_true",
         help="Enable detailed logging",
     )
@@ -207,7 +216,10 @@ def validate_args(args: argparse.Namespace) -> None:
     # Check output file
     output_path = Path(args.output)
     if output_path.exists() and not args.force:
-        print(f"Error: Output file '{args.output}' already exists. Use --force to overwrite", file=sys.stderr)
+        print(
+            f"Error: Output file '{args.output}' already exists. Use --force to overwrite",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Validate size
@@ -235,11 +247,17 @@ def validate_args(args: argparse.Namespace) -> None:
 
     # Validate fix_bottom_layers
     if args.fix_bottom_layers < 0:
-        print(f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative", file=sys.stderr)
+        print(
+            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if args.fix_bottom_layers >= nz:
-        print(f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})", file=sys.stderr)
+        print(
+            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Validate gap and vacuum
@@ -253,12 +271,17 @@ def validate_args(args: argparse.Namespace) -> None:
 
     # Validate lattice constant if provided
     if args.lattice_constant is not None and args.lattice_constant <= 0:
-        print(f"Error: --lattice-constant ({args.lattice_constant}) must be positive", file=sys.stderr)
+        print(
+            f"Error: --lattice-constant ({args.lattice_constant}) must be positive", file=sys.stderr
+        )
         sys.exit(1)
 
     # Validate PACKMOL tolerance
     if args.packmol_tolerance <= 0:
-        print(f"Error: --packmol-tolerance ({args.packmol_tolerance}) must be positive", file=sys.stderr)
+        print(
+            f"Error: --packmol-tolerance ({args.packmol_tolerance}) must be positive",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Infer output format from extension if not specified
@@ -274,7 +297,10 @@ def validate_args(args: argparse.Namespace) -> None:
             # Default to lammps for metal-water
             args.output_format = "lammps"
             if args.log:
-                print(f"Warning: Could not infer format from '{suffix}', using LAMMPS format", file=sys.stderr)
+                print(
+                    f"Warning: Could not infer format from '{suffix}', using LAMMPS format",
+                    file=sys.stderr,
+                )
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -332,17 +358,21 @@ def handle_command(args: argparse.Namespace) -> int:
             logger=logger,
         )
 
+        # Save input parameters if requested
+        if getattr(args, "save_input", False):
+            save_parameters_to_json(params)
+
         # Create generator
         generator = MetalWaterGenerator(params)
 
         # Generate interface
-        if not getattr(args, 'quiet', False):
+        if not getattr(args, "quiet", False):
             print(f"Generating {args.metal}-water interface...")
             print(f"  Building {args.metal}(111) surface...")
 
         output_file = generator.generate()
 
-        if not getattr(args, 'quiet', False):
+        if not getattr(args, "quiet", False):
             print(f"Successfully generated: {output_file}")
 
             # Print summary
@@ -356,8 +386,9 @@ def handle_command(args: argparse.Namespace) -> int:
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        if getattr(args, 'verbose', False):
+        if getattr(args, "verbose", False):
             import traceback
+
             traceback.print_exc()
         return 1
 
@@ -400,7 +431,8 @@ Examples:
 
     # Required arguments
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         required=True,
         help="Output file path",
@@ -408,7 +440,8 @@ Examples:
 
     # Metal parameters
     parser.add_argument(
-        "--metal", "-m",
+        "--metal",
+        "-m",
         type=str,
         default="Pt",
         choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
@@ -426,21 +459,24 @@ Examples:
 
     # Water parameters
     parser.add_argument(
-        "--n-water", "-n",
+        "--n-water",
+        "-n",
         type=int,
         required=True,
         help="Number of water molecules",
     )
 
     parser.add_argument(
-        "--density", "-d",
+        "--density",
+        "-d",
         type=float,
         default=1.0,
         help="Water density in g/cm^3 (default: 1.0)",
     )
 
     parser.add_argument(
-        "--water-model", "-w",
+        "--water-model",
+        "-w",
         type=str,
         choices=["SPC/E", "TIP3P", "TIP4P"],
         default="SPC/E",
@@ -449,14 +485,16 @@ Examples:
 
     # Interface parameters
     parser.add_argument(
-        "--gap", "-g",
+        "--gap",
+        "-g",
         type=float,
         default=0.0,
         help="Gap between metal and water in Angstroms (default: 0.0)",
     )
 
     parser.add_argument(
-        "--vacuum", "-v",
+        "--vacuum",
+        "-v",
         type=float,
         default=0.0,
         help="Vacuum above water in Angstroms (default: 0.0)",
@@ -464,7 +502,8 @@ Examples:
 
     # Optional parameters
     parser.add_argument(
-        "--lattice-constant", "-a",
+        "--lattice-constant",
+        "-a",
         type=float,
         help="Custom lattice constant in Angstroms",
     )
@@ -485,7 +524,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--packmol-tolerance", "-t",
+        "--packmol-tolerance",
+        "-t",
         type=float,
         default=2.0,
         help="Packmol tolerance in Angstroms (default: 2.0)",
@@ -500,7 +540,8 @@ Examples:
 
     # Output format
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "data"],
         help="Output file format",
@@ -508,7 +549,8 @@ Examples:
 
     # Options
     parser.add_argument(
-        "--log", "-l",
+        "--log",
+        "-l",
         action="store_true",
         help="Enable detailed logging",
     )
@@ -523,6 +565,12 @@ Examples:
         "--force",
         action="store_true",
         help="Overwrite existing output file",
+    )
+
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
     )
 
     args = parser.parse_args()

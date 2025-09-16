@@ -4,10 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from ...generate_structure.water_box import (
-    WaterBoxGenerator,
-    WaterBoxGeneratorParameters,
-)
+from ...generate_structure.water_box import WaterBoxGenerator, WaterBoxGeneratorParameters
+from ...utils.json_utils import save_parameters_to_json
 from ...utils.logger import MLIPLogger
 
 
@@ -45,7 +43,8 @@ Examples:
 
     # Required arguments
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         required=True,
         help="Output file path (e.g., water.xyz, water.data, POSCAR)",
@@ -53,7 +52,8 @@ Examples:
 
     # Box size (can be 1 or 3 values)
     parser.add_argument(
-        "--box-size", "-b",
+        "--box-size",
+        "-b",
         type=float,
         nargs="+",
         metavar="SIZE",
@@ -62,7 +62,8 @@ Examples:
 
     # Number of molecules
     parser.add_argument(
-        "--n-water", "-n",
+        "--n-water",
+        "-n",
         type=int,
         metavar="N",
         help="Number of water molecules to generate",
@@ -70,7 +71,8 @@ Examples:
 
     # Density
     parser.add_argument(
-        "--density", "-d",
+        "--density",
+        "-d",
         type=float,
         metavar="RHO",
         help="Water density in g/cm³ (default: model-specific, ~0.997)",
@@ -78,7 +80,8 @@ Examples:
 
     # Water model
     parser.add_argument(
-        "--water-model", "-m",
+        "--water-model",
+        "-m",
         type=str,
         choices=["SPC/E", "TIP3P", "TIP4P"],
         default="SPC/E",
@@ -87,7 +90,8 @@ Examples:
 
     # Output format
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         type=str,
         choices=["xyz", "lammps", "poscar"],
         help="Output file format. If not specified, inferred from file extension",
@@ -95,7 +99,8 @@ Examples:
 
     # Packmol parameters
     parser.add_argument(
-        "--tolerance", "-t",
+        "--tolerance",
+        "-t",
         type=float,
         default=2.0,
         metavar="TOL",
@@ -103,7 +108,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--seed", "-s",
+        "--seed",
+        "-s",
         type=int,
         default=12345,
         help="Random seed for reproducibility (default: 12345)",
@@ -119,7 +125,8 @@ Examples:
 
     # Options
     parser.add_argument(
-        "--log", "-l",
+        "--log",
+        "-l",
         action="store_true",
         help="Enable detailed logging",
     )
@@ -142,6 +149,12 @@ Examples:
         help="Overwrite output file if it exists",
     )
 
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
+    )
+
 
 def validate_args(args: argparse.Namespace) -> None:
     """
@@ -156,7 +169,10 @@ def validate_args(args: argparse.Namespace) -> None:
     # Check box-size format
     if args.box_size is not None:
         if len(args.box_size) not in [1, 3]:
-            print("Error: --box-size must have 1 value (cubic) or 3 values (rectangular)", file=sys.stderr)
+            print(
+                "Error: --box-size must have 1 value (cubic) or 3 values (rectangular)",
+                file=sys.stderr,
+            )
             sys.exit(1)
         if len(args.box_size) == 3:
             args.box_size = tuple(args.box_size)
@@ -164,18 +180,24 @@ def validate_args(args: argparse.Namespace) -> None:
             args.box_size = args.box_size[0]
 
     # Count how many of the 3 main parameters are provided
-    params_count = sum([
-        args.box_size is not None,
-        args.n_water is not None,
-        args.density is not None,
-    ])
+    params_count = sum(
+        [
+            args.box_size is not None,
+            args.n_water is not None,
+            args.density is not None,
+        ]
+    )
 
     # Check valid combinations
     if params_count == 0:
-        print("Error: Must specify at least one of: --box-size, --n-water, --density", file=sys.stderr)
+        print(
+            "Error: Must specify at least one of: --box-size, --n-water, --density", file=sys.stderr
+        )
         sys.exit(1)
     elif params_count == 3:
-        print("Error: Cannot specify all three: --box-size, --n-water, and --density", file=sys.stderr)
+        print(
+            "Error: Cannot specify all three: --box-size, --n-water, and --density", file=sys.stderr
+        )
         print("       Please specify only 2 of these 3 parameters", file=sys.stderr)
         sys.exit(1)
 
@@ -187,7 +209,10 @@ def validate_args(args: argparse.Namespace) -> None:
     # Check output file
     output_path = Path(args.output)
     if output_path.exists() and not args.force:
-        print(f"Error: Output file '{args.output}' already exists. Use --force to overwrite", file=sys.stderr)
+        print(
+            f"Error: Output file '{args.output}' already exists. Use --force to overwrite",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Infer output format from extension if not specified
@@ -203,7 +228,10 @@ def validate_args(args: argparse.Namespace) -> None:
             # Default to xyz if can't infer
             args.output_format = "xyz"
             if args.log:
-                print(f"Warning: Could not infer format from '{suffix}', using XYZ format", file=sys.stderr)
+                print(
+                    f"Warning: Could not infer format from '{suffix}', using XYZ format",
+                    file=sys.stderr,
+                )
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -254,22 +282,28 @@ def handle_command(args: argparse.Namespace) -> int:
             logger=logger,
         )
 
+        # Save input parameters if requested
+        if getattr(args, "save_input", False):
+            save_parameters_to_json(params)
+
         # Create generator
         generator = WaterBoxGenerator(params)
 
         # Generate water box
-        if not getattr(args, 'quiet', False):
-            print(f"Generating water box...")
+        if not getattr(args, "quiet", False):
+            print("Generating water box...")
 
         output_file = generator.run(save_artifacts=args.save_artifacts)
 
-        if not getattr(args, 'quiet', False):
+        if not getattr(args, "quiet", False):
             print(f"Successfully generated: {output_file}")
 
             # Print summary information
             if args.box_size is not None:
                 if isinstance(args.box_size, tuple):
-                    print(f"  Box size: {args.box_size[0]} x {args.box_size[1]} x {args.box_size[2]} Å")
+                    print(
+                        f"  Box size: {args.box_size[0]} x {args.box_size[1]} x {args.box_size[2]} Å"
+                    )
                 else:
                     print(f"  Box size: {args.box_size} x {args.box_size} x {args.box_size} Å")
 
@@ -280,8 +314,9 @@ def handle_command(args: argparse.Namespace) -> int:
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
-        if getattr(args, 'verbose', False):
+        if getattr(args, "verbose", False):
             import traceback
+
             traceback.print_exc()
         return 1
 
@@ -319,7 +354,8 @@ Examples:
 
     # Required arguments
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         required=True,
         help="Output file path (e.g., water.xyz, water.data, POSCAR)",
@@ -327,7 +363,8 @@ Examples:
 
     # Box size (can be 1 or 3 values)
     parser.add_argument(
-        "--box-size", "-b",
+        "--box-size",
+        "-b",
         type=float,
         nargs="+",
         metavar="SIZE",
@@ -336,7 +373,8 @@ Examples:
 
     # Number of molecules
     parser.add_argument(
-        "--n-water", "-n",
+        "--n-water",
+        "-n",
         type=int,
         metavar="N",
         help="Number of water molecules to generate",
@@ -344,7 +382,8 @@ Examples:
 
     # Density
     parser.add_argument(
-        "--density", "-d",
+        "--density",
+        "-d",
         type=float,
         metavar="RHO",
         help="Water density in g/cm³ (default: model-specific, ~0.997)",
@@ -352,7 +391,8 @@ Examples:
 
     # Water model
     parser.add_argument(
-        "--water-model", "-m",
+        "--water-model",
+        "-m",
         type=str,
         choices=["SPC/E", "TIP3P", "TIP4P"],
         default="SPC/E",
@@ -361,7 +401,8 @@ Examples:
 
     # Output format
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         type=str,
         choices=["xyz", "lammps", "poscar"],
         help="Output file format. If not specified, inferred from file extension",
@@ -369,7 +410,8 @@ Examples:
 
     # Packmol parameters
     parser.add_argument(
-        "--tolerance", "-t",
+        "--tolerance",
+        "-t",
         type=float,
         default=2.0,
         metavar="TOL",
@@ -377,7 +419,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--seed", "-s",
+        "--seed",
+        "-s",
         type=int,
         default=12345,
         help="Random seed for reproducibility (default: 12345)",
@@ -393,7 +436,8 @@ Examples:
 
     # Logging and output control
     parser.add_argument(
-        "--log", "-l",
+        "--log",
+        "-l",
         action="store_true",
         help="Enable detailed logging",
     )
@@ -414,6 +458,12 @@ Examples:
         "--force",
         action="store_true",
         help="Overwrite output file if it exists",
+    )
+
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
     )
 
     # Add verbose/quiet flags for standalone

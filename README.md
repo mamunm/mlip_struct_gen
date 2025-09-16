@@ -201,6 +201,20 @@ Override default lattice constants for metals:
 mlip-metal-surface --metal Cu --size 4 4 6 --lattice-constant 3.615 --output cu.vasp
 ```
 
+### Save Input Parameters
+Save input parameters to JSON for reproducibility and documentation:
+```bash
+mlip-water-box --n-water 500 --output water.data --save-input
+# Creates input_params.json with all parameters used
+
+mlip-metal-salt-water --metal Au --size 5 5 6 --salt KCl --n-salt 8 --n-water 200 --output interface.lammps --save-input
+# Saves complete configuration for complex interfaces
+```
+This feature is available for all generators and helps with:
+- Reproducing exact structure generation runs
+- Documenting simulation setups
+- Sharing configurations with collaborators
+
 ## Examples
 
 Comprehensive examples for each generator are available in the `examples/` directory:
