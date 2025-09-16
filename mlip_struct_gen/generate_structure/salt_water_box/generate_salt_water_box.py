@@ -4,7 +4,6 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -33,13 +32,14 @@ class SaltWaterBoxGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: Optional[MLIPLogger] = None
+        self.logger: MLIPLogger | None = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
             else:
                 try:
                     from ...utils.logger import MLIPLogger
+
                     self.logger = MLIPLogger()
                 except ImportError:
                     self.logger = None
@@ -55,7 +55,9 @@ class SaltWaterBoxGenerator:
         if self.logger:
             self.logger.info("Initializing SaltWaterBoxGenerator")
             self.logger.info(f"Water model: {self.parameters.water_model}")
-            self.logger.info(f"Salt: {self.salt_model['name']} ({self.parameters.n_salt} formula units)")
+            self.logger.info(
+                f"Salt: {self.salt_model['name']} ({self.parameters.n_salt} formula units)"
+            )
             self.logger.info(f"Ions: {self.n_cations} cations, {self.n_anions} anions")
             self.logger.info(f"Box size: {self.parameters.box_size}")
 
@@ -63,7 +65,9 @@ class SaltWaterBoxGenerator:
 
     def _calculate_ion_numbers(self) -> None:
         """Calculate number of cations and anions from salt formula units."""
-        n_cation_per_formula, n_anion_per_formula = get_salt_stoichiometry(self.parameters.salt_type)
+        n_cation_per_formula, n_anion_per_formula = get_salt_stoichiometry(
+            self.parameters.salt_type
+        )
         self.n_cations = self.parameters.n_salt * n_cation_per_formula
         self.n_anions = self.parameters.n_salt * n_anion_per_formula
 
@@ -78,7 +82,7 @@ class SaltWaterBoxGenerator:
                 input="",
                 capture_output=True,
                 timeout=5,
-                text=True
+                text=True,
             )
             # Packmol exits with code 171 when given empty input
             if result.returncode == 171:
@@ -86,7 +90,9 @@ class SaltWaterBoxGenerator:
                     self.logger.success(f"Packmol found: {self.parameters.packmol_executable}")
             else:
                 if self.logger:
-                    self.logger.warning(f"Packmol returned unexpected exit code: {result.returncode}")
+                    self.logger.warning(
+                        f"Packmol returned unexpected exit code: {result.returncode}"
+                    )
 
         except subprocess.TimeoutExpired:
             if self.logger:
@@ -97,7 +103,9 @@ class SaltWaterBoxGenerator:
             ) from None
         except FileNotFoundError:
             if self.logger:
-                self.logger.error(f"Packmol executable '{self.parameters.packmol_executable}' not found")
+                self.logger.error(
+                    f"Packmol executable '{self.parameters.packmol_executable}' not found"
+                )
             raise RuntimeError(
                 f"Packmol executable '{self.parameters.packmol_executable}' not found. "
                 "Please install packmol:\n"
@@ -125,7 +133,9 @@ class SaltWaterBoxGenerator:
         n_water = self._calculate_water_molecules()
 
         if self.logger:
-            self.logger.info(f"Target molecules: {n_water} water, {self.n_cations} cations, {self.n_anions} anions")
+            self.logger.info(
+                f"Target molecules: {n_water} water, {self.n_cations} cations, {self.n_anions} anions"
+            )
 
         # Create output directory
         output_path = Path(self.parameters.output_file)
@@ -155,16 +165,8 @@ class SaltWaterBoxGenerator:
             cation_xyz = work_dir / "cation.xyz"
             anion_xyz = work_dir / "anion.xyz"
 
-            create_ion_xyz(
-                self.salt_model["cation"],
-                [0.0, 0.0, 0.0],
-                str(cation_xyz)
-            )
-            create_ion_xyz(
-                self.salt_model["anion"],
-                [0.0, 0.0, 0.0],
-                str(anion_xyz)
-            )
+            create_ion_xyz(self.salt_model["cation"], [0.0, 0.0, 0.0], str(cation_xyz))
+            create_ion_xyz(self.salt_model["anion"], [0.0, 0.0, 0.0], str(anion_xyz))
 
             # Create packmol input
             if self.logger:
@@ -174,8 +176,14 @@ class SaltWaterBoxGenerator:
             temp_output = work_dir / "output.xyz"
 
             self._create_packmol_input(
-                input_file, water_xyz, cation_xyz, anion_xyz, temp_output,
-                n_water, self.n_cations, self.n_anions
+                input_file,
+                water_xyz,
+                cation_xyz,
+                anion_xyz,
+                temp_output,
+                n_water,
+                self.n_cations,
+                self.n_anions,
             )
 
             # Run packmol
@@ -223,14 +231,16 @@ class SaltWaterBoxGenerator:
             cation_radius = self.salt_model["cation"]["vdw_radius"]
             anion_radius = self.salt_model["anion"]["vdw_radius"]
 
-            cation_volume = (4/3) * np.pi * cation_radius**3
-            anion_volume = (4/3) * np.pi * anion_radius**3
+            cation_volume = (4 / 3) * np.pi * cation_radius**3
+            anion_volume = (4 / 3) * np.pi * anion_radius**3
 
             total_ion_volume = self.n_cations * cation_volume + self.n_anions * anion_volume
             available_volume = box_volume - total_ion_volume
 
             if self.logger:
-                self.logger.info(f"Ion volume: {total_ion_volume:.1f} Ų ({100*total_ion_volume/box_volume:.1f}% of box)")
+                self.logger.info(
+                    f"Ion volume: {total_ion_volume:.1f} Ų ({100*total_ion_volume/box_volume:.1f}% of box)"
+                )
         else:
             available_volume = box_volume
 
@@ -277,14 +287,14 @@ class SaltWaterBoxGenerator:
             cation_radius = self.salt_model["cation"]["vdw_radius"]
             anion_radius = self.salt_model["anion"]["vdw_radius"]
 
-            cation_volume = (4/3) * np.pi * cation_radius**3
-            anion_volume = (4/3) * np.pi * anion_radius**3
+            cation_volume = (4 / 3) * np.pi * cation_radius**3
+            anion_volume = (4 / 3) * np.pi * anion_radius**3
 
             total_ion_volume = self.n_cations * cation_volume + self.n_anions * anion_volume
             total_volume += total_ion_volume
 
         # Calculate cubic box size
-        box_size = total_volume ** (1/3)
+        box_size = total_volume ** (1 / 3)
 
         # Set as cubic box
         self.parameters.box_size = (box_size, box_size, box_size)
@@ -301,7 +311,7 @@ class SaltWaterBoxGenerator:
         output_file: Path,
         n_water: int,
         n_cations: int,
-        n_anions: int
+        n_anions: int,
     ) -> None:
         """Create Packmol input file."""
         assert self.parameters.box_size is not None
@@ -316,7 +326,7 @@ class SaltWaterBoxGenerator:
         y_high = box[1] - 0.5 * tol
         z_high = box[2] - 0.5 * tol
 
-        with open(input_file, 'w') as f:
+        with open(input_file, "w") as f:
             f.write(f"tolerance {tol}\n")
             f.write("filetype xyz\n")
             f.write(f"output {output_file.name}\n")
@@ -349,11 +359,11 @@ class SaltWaterBoxGenerator:
         try:
             subprocess.run(
                 [self.parameters.packmol_executable],
-                stdin=open(input_file, 'r'),
+                stdin=open(input_file),
                 capture_output=True,
                 text=True,
                 check=True,
-                cwd=str(work_dir)
+                cwd=str(work_dir),
             )
 
             if self.logger:
@@ -371,7 +381,7 @@ class SaltWaterBoxGenerator:
     def _convert_xyz_to_lammps(self, input_xyz: Path, output_file: Path, n_water: int) -> None:
         """Convert XYZ to LAMMPS data format with bonds and angles for water."""
         # Read XYZ file
-        with open(input_xyz, 'r') as f:
+        with open(input_xyz) as f:
             lines = f.readlines()
 
         n_atoms = int(lines[0].strip())
@@ -415,14 +425,16 @@ class SaltWaterBoxGenerator:
         # Calculate bonds and angles (only for water)
         water_atoms_per_molecule = len(water_model["atoms"])
         n_bonds = n_water * 2  # 2 O-H bonds per water
-        n_angles = n_water     # 1 H-O-H angle per water
+        n_angles = n_water  # 1 H-O-H angle per water
 
         # Write LAMMPS data file
         assert self.parameters.box_size is not None
         box = self.parameters.box_size
 
-        with open(output_file, 'w') as f:
-            f.write(f"# LAMMPS data file for {self.salt_model['name']} + {self.parameters.water_model} water\n")
+        with open(output_file, "w") as f:
+            f.write(
+                f"# LAMMPS data file for {self.salt_model['name']} + {self.parameters.water_model} water\n"
+            )
             f.write("# Generated by mlip-struct-gen\n\n")
 
             # Counts
@@ -472,8 +484,10 @@ class SaltWaterBoxGenerator:
                     element, x, y, z = atoms[i * water_atoms_per_molecule + j]
                     atom_type = atom_types[element]
                     charge = water_charges[element]
-                    f.write(f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {charge:10.6f} "
-                           f"{x:12.6f} {y:12.6f} {z:12.6f}\n")
+                    f.write(
+                        f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {charge:10.6f} "
+                        f"{x:12.6f} {y:12.6f} {z:12.6f}\n"
+                    )
                     atom_id += 1
                 mol_id += 1
 
@@ -482,8 +496,10 @@ class SaltWaterBoxGenerator:
             for i in range(self.n_cations):
                 element, x, y, z = atoms[water_atoms_total + i]
                 atom_type = atom_types[cation_element]
-                f.write(f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {cation_charge:10.6f} "
-                       f"{x:12.6f} {y:12.6f} {z:12.6f}\n")
+                f.write(
+                    f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {cation_charge:10.6f} "
+                    f"{x:12.6f} {y:12.6f} {z:12.6f}\n"
+                )
                 atom_id += 1
                 mol_id += 1
 
@@ -491,8 +507,10 @@ class SaltWaterBoxGenerator:
             for i in range(self.n_anions):
                 element, x, y, z = atoms[water_atoms_total + self.n_cations + i]
                 atom_type = atom_types[anion_element]
-                f.write(f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {anion_charge:10.6f} "
-                       f"{x:12.6f} {y:12.6f} {z:12.6f}\n")
+                f.write(
+                    f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {anion_charge:10.6f} "
+                    f"{x:12.6f} {y:12.6f} {z:12.6f}\n"
+                )
                 atom_id += 1
                 mol_id += 1
 
@@ -506,7 +524,7 @@ class SaltWaterBoxGenerator:
                     base_atom = mol * water_atoms_per_molecule + 1
                     # O-H bonds
                     for h in range(1, water_atoms_per_molecule):
-                        if atoms[(base_atom - 1) + h][0] == 'H':
+                        if atoms[(base_atom - 1) + h][0] == "H":
                             f.write(f"{bond_id:6d} 1 {base_atom:6d} {base_atom + h:6d}\n")
                             bond_id += 1
                 f.write("\n")
@@ -520,7 +538,7 @@ class SaltWaterBoxGenerator:
                     # H-O-H angle
                     h_atoms = []
                     for h in range(1, water_atoms_per_molecule):
-                        if atoms[(base_atom - 1) + h][0] == 'H':
+                        if atoms[(base_atom - 1) + h][0] == "H":
                             h_atoms.append(base_atom + h)
 
                     if len(h_atoms) >= 2:
@@ -528,15 +546,19 @@ class SaltWaterBoxGenerator:
                         angle_id += 1
 
         if self.logger:
-            self.logger.success(f"Successfully converted to LAMMPS data format")
-            self.logger.info(f"System: {n_water} water, {self.n_cations} {cation_element}, {self.n_anions} {anion_element}")
+            self.logger.success("Successfully converted to LAMMPS data format")
+            self.logger.info(
+                f"System: {n_water} water, {self.n_cations} {cation_element}, {self.n_anions} {anion_element}"
+            )
 
     def _convert_xyz_to_poscar(self, input_xyz: Path, output_file: Path) -> None:
         """Convert XYZ to POSCAR format."""
         try:
             from ase import Atoms, io
         except ImportError:
-            raise ImportError("ASE is required for POSCAR format. Install with: pip install ase") from None
+            raise ImportError(
+                "ASE is required for POSCAR format. Install with: pip install ase"
+            ) from None
 
         # Read XYZ
         atoms = io.read(str(input_xyz))  # type: ignore[assignment]
@@ -551,17 +573,18 @@ class SaltWaterBoxGenerator:
         symbols = atoms.get_chemical_symbols()  # type: ignore
         positions = atoms.get_positions()  # type: ignore
 
-        atom_data = [(s, p) for s, p in zip(symbols, positions)]
+        atom_data = [(s, p) for s, p in zip(symbols, positions, strict=False)]
         atom_data.sort(key=lambda x: x[0], reverse=True)
 
         sorted_symbols = [s for s, _ in atom_data]
         sorted_positions = [p for _, p in atom_data]
 
-        sorted_atoms = Atoms(symbols=sorted_symbols, positions=sorted_positions,
-                            cell=atoms.cell, pbc=True)  # type: ignore
+        sorted_atoms = Atoms(
+            symbols=sorted_symbols, positions=sorted_positions, cell=atoms.cell, pbc=True
+        )  # type: ignore
 
         # Write POSCAR
-        io.write(str(output_file), sorted_atoms, format='vasp', direct=False, sort=False)
+        io.write(str(output_file), sorted_atoms, format="vasp", direct=False, sort=False)
 
         if self.logger:
             self.logger.success("Successfully converted to POSCAR format")

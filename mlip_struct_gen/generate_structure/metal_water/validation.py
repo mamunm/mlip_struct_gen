@@ -1,16 +1,25 @@
 """Validation for metal-water interface generation parameters."""
 
-from pathlib import Path
-from typing import Set
 import shutil
+from pathlib import Path
 
 from .input_parameters import MetalWaterParameters
 
-
 # Supported FCC metals with experimental lattice constants (Angstroms)
-SUPPORTED_METALS: Set[str] = {
-    "Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt",
-    "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"
+SUPPORTED_METALS: set[str] = {
+    "Al",
+    "Au",
+    "Ag",
+    "Cu",
+    "Ni",
+    "Pd",
+    "Pt",
+    "Pb",
+    "Rh",
+    "Ir",
+    "Ca",
+    "Sr",
+    "Yb",
 }
 
 # Default lattice constants for common FCC metals (Angstroms)
@@ -27,7 +36,7 @@ DEFAULT_LATTICE_CONSTANTS = {
     "Ir": 3.839,
     "Ca": 5.588,
     "Sr": 6.085,
-    "Yb": 5.485
+    "Yb": 5.485,
 }
 
 # Water model parameters
@@ -89,20 +98,28 @@ def validate_parameters(params: MetalWaterParameters) -> None:
         raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
 
     if nz < 3:
-        raise ValueError(f"Number of layers (nz={nz}) must be at least 3 for proper surface representation")
+        raise ValueError(
+            f"Number of layers (nz={nz}) must be at least 3 for proper surface representation"
+        )
 
     if nx > 20 or ny > 20:
-        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency")
+        raise ValueError(
+            f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency"
+        )
 
     if nz > 20:
-        raise ValueError(f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency")
+        raise ValueError(
+            f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency"
+        )
 
     # Validate water parameters
     if params.n_water < 1:
         raise ValueError(f"n_water ({params.n_water}) must be at least 1")
 
     if params.n_water > 10000:
-        raise ValueError(f"n_water ({params.n_water}) is very large (>10000). Consider computational cost.")
+        raise ValueError(
+            f"n_water ({params.n_water}) is very large (>10000). Consider computational cost."
+        )
 
     if params.density <= 0:
         raise ValueError(f"density ({params.density} g/cm³) must be positive")
@@ -128,7 +145,9 @@ def validate_parameters(params: MetalWaterParameters) -> None:
         raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Å) must be non-negative")
 
     if params.vacuum_above_water > 50:
-        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Å) should not exceed 50 Å")
+        raise ValueError(
+            f"vacuum_above_water ({params.vacuum_above_water} Å) should not exceed 50 Å"
+        )
 
     # Validate lattice constant if provided
     if params.lattice_constant is not None:
@@ -156,10 +175,14 @@ def validate_parameters(params: MetalWaterParameters) -> None:
         raise ValueError(f"packmol_tolerance ({params.packmol_tolerance} Å) must be positive")
 
     if params.packmol_tolerance < 1.0:
-        print(f"Warning: Small packmol_tolerance ({params.packmol_tolerance} Å) may cause packing failures")
+        print(
+            f"Warning: Small packmol_tolerance ({params.packmol_tolerance} Å) may cause packing failures"
+        )
 
     if params.packmol_tolerance > 3.0:
-        print(f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Å) may result in poor packing")
+        print(
+            f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Å) may result in poor packing"
+        )
 
     # Validate seed
     if params.seed < 0:
@@ -189,7 +212,9 @@ def validate_parameters(params: MetalWaterParameters) -> None:
         suffix = output_path.suffix.lower()
         valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data"}
         if suffix and suffix not in valid_extensions and output_path.name.upper() != "POSCAR":
-            print(f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default.")
+            print(
+                f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default."
+            )
 
 
 def get_lattice_constant(metal: str, custom_lattice: float = None) -> float:

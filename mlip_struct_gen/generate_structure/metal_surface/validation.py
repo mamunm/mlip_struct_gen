@@ -1,15 +1,24 @@
 """Validation for metal surface generation parameters."""
 
 from pathlib import Path
-from typing import Set
 
 from .input_parameters import MetalSurfaceParameters
 
-
 # Supported FCC metals with experimental lattice constants (Angstroms)
-SUPPORTED_METALS: Set[str] = {
-    "Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt",
-    "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"
+SUPPORTED_METALS: set[str] = {
+    "Al",
+    "Au",
+    "Ag",
+    "Cu",
+    "Ni",
+    "Pd",
+    "Pt",
+    "Pb",
+    "Rh",
+    "Ir",
+    "Ca",
+    "Sr",
+    "Yb",
 }
 
 # Default lattice constants for common FCC metals (Angstroms)
@@ -26,7 +35,7 @@ DEFAULT_LATTICE_CONSTANTS = {
     "Ir": 3.839,
     "Ca": 5.588,
     "Sr": 6.085,
-    "Yb": 5.485
+    "Yb": 5.485,
 }
 
 
@@ -63,13 +72,19 @@ def validate_parameters(params: MetalSurfaceParameters) -> None:
         raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
 
     if nz < 3:
-        raise ValueError(f"Number of layers (nz={nz}) must be at least 3 for proper surface representation")
+        raise ValueError(
+            f"Number of layers (nz={nz}) must be at least 3 for proper surface representation"
+        )
 
     if nx > 20 or ny > 20:
-        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency")
+        raise ValueError(
+            f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency"
+        )
 
     if nz > 20:
-        raise ValueError(f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency")
+        raise ValueError(
+            f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency"
+        )
 
     # Validate vacuum
     if params.vacuum < 0:
@@ -129,7 +144,9 @@ def validate_parameters(params: MetalSurfaceParameters) -> None:
         suffix = output_path.suffix.lower()
         valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data"}
         if suffix and suffix not in valid_extensions and output_path.name.upper() != "POSCAR":
-            print(f"Warning: Unrecognized file extension '{suffix}'. Will use XYZ format by default.")
+            print(
+                f"Warning: Unrecognized file extension '{suffix}'. Will use XYZ format by default."
+            )
 
 
 def get_lattice_constant(metal: str, custom_lattice: float = None) -> float:

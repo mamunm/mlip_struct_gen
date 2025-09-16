@@ -1,20 +1,15 @@
 """Utility functions for structure generation."""
 
-from typing import Optional, Union, List
-from ase import Atoms
-from ase.io import read, write
 from pathlib import Path
 
+from ase import Atoms
+from ase.io import read, write
 
-def save_structure(
-    atoms: Atoms,
-    filename: Union[str, Path],
-    format: Optional[str] = None,
-    **kwargs
-) -> None:
+
+def save_structure(atoms: Atoms, filename: str | Path, format: str | None = None, **kwargs) -> None:
     """
     Save structure to file.
-    
+
     Args:
         atoms: Structure to save
         filename: Output filename
@@ -25,18 +20,16 @@ def save_structure(
 
 
 def load_structure(
-    filename: Union[str, Path],
-    index: Union[int, str] = -1,
-    format: Optional[str] = None
-) -> Union[Atoms, List[Atoms]]:
+    filename: str | Path, index: int | str = -1, format: str | None = None
+) -> Atoms | list[Atoms]:
     """
     Load structure from file.
-    
+
     Args:
         filename: Input filename
         index: Frame index or slice
         format: File format (auto-detected if None)
-        
+
     Returns:
         Single Atoms object or list of Atoms
     """

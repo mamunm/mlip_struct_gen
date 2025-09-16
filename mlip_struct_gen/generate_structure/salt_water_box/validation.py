@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .input_parameters import SaltWaterBoxGeneratorParameters
 
 from ..templates.salt_models import get_salt_model
-from ..templates.water_models import get_water_density, get_water_model
+from ..templates.water_models import get_water_model
 
 
 def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
@@ -36,7 +36,7 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
         parameters.box_size = (
             float(parameters.box_size),
             float(parameters.box_size),
-            float(parameters.box_size)
+            float(parameters.box_size),
         )
     elif isinstance(parameters.box_size, list | tuple):
         # Validate and normalize list/tuple
@@ -60,7 +60,9 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
 
         # Minimum 10 Å for salt water boxes (larger than pure water)
         if any(s < 10.0 for s in parameters.box_size):
-            raise ValueError("Box dimensions too small (<10 Å). Minimum recommended size is 10 Å for salt solutions.")
+            raise ValueError(
+                "Box dimensions too small (<10 Å). Minimum recommended size is 10 Å for salt solutions."
+            )
 
     # Output file validation
     if not isinstance(parameters.output_file, str):
@@ -75,7 +77,7 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
         format_extensions = {
             "xyz": ".xyz",
             "lammps": ".data",
-            "poscar": ""  # POSCAR doesn't use an extension
+            "poscar": "",  # POSCAR doesn't use an extension
         }
         extension = format_extensions.get(parameters.output_format, ".xyz")
         parameters.output_file = str(output_path) + extension
@@ -144,8 +146,14 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
     # 5. n_water + density (computes box for molecules at density)
 
     # Invalid: all three specified
-    if parameters.box_size is not None and parameters.n_water is not None and parameters.density is not None:
-        raise ValueError("Cannot specify all three: box_size, n_water, and density. Choose at most two.")
+    if (
+        parameters.box_size is not None
+        and parameters.n_water is not None
+        and parameters.density is not None
+    ):
+        raise ValueError(
+            "Cannot specify all three: box_size, n_water, and density. Choose at most two."
+        )
 
     # Volume handling validation
     if not isinstance(parameters.include_salt_volume, bool):
@@ -193,6 +201,7 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
     if parameters.logger is not None:
         try:
             from ...utils.logger import MLIPLogger
+
             if not isinstance(parameters.logger, MLIPLogger):
                 raise TypeError("logger must be an MLIPLogger instance or None")
         except ImportError:
@@ -215,8 +224,9 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
         # Warning for very high concentrations
         if concentration > 5.0 and not parameters.include_salt_volume:
             import warnings
+
             warnings.warn(
                 f"High salt concentration (~{concentration:.1f} M) detected. "
                 "Consider setting include_salt_volume=True for better accuracy.",
-                UserWarning
+                UserWarning,
             )

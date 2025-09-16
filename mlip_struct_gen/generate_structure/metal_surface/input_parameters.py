@@ -1,7 +1,7 @@
 """Input parameters for metal surface generation."""
 
 from dataclasses import dataclass
-from typing import Tuple, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ...utils.logger import MLIPLogger
@@ -93,12 +93,12 @@ class MetalSurfaceParameters:
     """
 
     metal: str
-    size: Tuple[int, int, int]  # (nx, ny, nz)
+    size: tuple[int, int, int]  # (nx, ny, nz)
     vacuum: float
     output_file: str
-    lattice_constant: Optional[float] = None
+    lattice_constant: float | None = None
     fix_bottom_layers: int = 0
     orthogonalize: bool = True
-    output_format: Optional[str] = None
+    output_format: str | None = None
     log: bool = False
     logger: Optional["MLIPLogger"] = None

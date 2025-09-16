@@ -1,14 +1,14 @@
 """Metal FCC(111) surface generation using ASE."""
 
 from pathlib import Path
-from typing import Optional
+
 import numpy as np
 
 try:
     from ase import Atoms
     from ase.build import fcc111
-    from ase.io import write
     from ase.constraints import FixAtoms
+    from ase.io import write
 except ImportError:
     raise ImportError(
         "ASE (Atomic Simulation Environment) is required for metal surface generation. "
@@ -16,7 +16,7 @@ except ImportError:
     )
 
 from .input_parameters import MetalSurfaceParameters
-from .validation import validate_parameters, get_lattice_constant
+from .validation import get_lattice_constant, validate_parameters
 
 
 class MetalSurfaceGenerator:
@@ -37,7 +37,7 @@ class MetalSurfaceGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: Optional["MLIPLogger"] = None
+        self.logger: MLIPLogger | None = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -45,6 +45,7 @@ class MetalSurfaceGenerator:
                 # Import here to avoid circular imports
                 try:
                     from ...utils.logger import MLIPLogger
+
                     self.logger = MLIPLogger()
                 except ImportError:
                     # Gracefully handle missing logger
@@ -52,8 +53,7 @@ class MetalSurfaceGenerator:
 
         # Get lattice constant
         self.lattice_constant = get_lattice_constant(
-            self.parameters.metal,
-            self.parameters.lattice_constant
+            self.parameters.metal, self.parameters.lattice_constant
         )
 
         if self.logger:
@@ -89,13 +89,15 @@ class MetalSurfaceGenerator:
                 a=self.lattice_constant,
                 orthogonal=self.parameters.orthogonalize,
                 vacuum=self.parameters.vacuum,
-                periodic=True
+                periodic=True,
             )
 
             if self.logger:
                 self.logger.info(f"Created surface with {len(slab)} atoms")
                 cell = slab.get_cell()
-                self.logger.info(f"Cell dimensions: {cell[0,0]:.2f} x {cell[1,1]:.2f} x {cell[2,2]:.2f} Å")
+                self.logger.info(
+                    f"Cell dimensions: {cell[0,0]:.2f} x {cell[1,1]:.2f} x {cell[2,2]:.2f} Å"
+                )
 
             # Apply constraints to fix bottom layers if requested
             if self.parameters.fix_bottom_layers > 0:
@@ -199,7 +201,7 @@ class MetalSurfaceGenerator:
                 "poscar": "poscar",
                 "lammps": "lammps",
                 "data": "lammps",
-                "xyz": "xyz"
+                "xyz": "xyz",
             }
             return format_map.get(self.parameters.output_format.lower(), "xyz")
 
@@ -243,10 +245,11 @@ class MetalSurfaceGenerator:
 
         # Get atomic mass
         from ase.data import atomic_masses, atomic_numbers
+
         atomic_number = atomic_numbers[metal]
         atomic_mass = atomic_masses[atomic_number]
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             # Header
             f.write(f"LAMMPS data file for {metal}(111) surface\n\n")
 
@@ -283,7 +286,9 @@ class MetalSurfaceGenerator:
             f.write("Atoms\n\n")
             for i in range(n_atoms):
                 # atom_id mol_id atom_type charge x y z
-                f.write(f"{i+1} 1 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                f.write(
+                    f"{i+1} 1 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                )
 
     def run(self, save_artifacts: bool = False) -> str:
         """

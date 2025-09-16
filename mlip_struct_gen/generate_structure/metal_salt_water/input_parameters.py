@@ -1,7 +1,7 @@
 """Input parameters for metal-salt-water interface generation."""
 
 from dataclasses import dataclass
-from typing import Tuple, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ...utils.logger import MLIPLogger
@@ -141,7 +141,7 @@ class MetalSaltWaterParameters:
     """
 
     metal: str
-    size: Tuple[int, int, int]  # (nx, ny, nz)
+    size: tuple[int, int, int]  # (nx, ny, nz)
     n_water: int
     salt_type: str
     n_salt: int
@@ -151,11 +151,11 @@ class MetalSaltWaterParameters:
     gap: float = 0.0  # Angstroms
     vacuum_above_water: float = 0.0  # Angstroms
     water_model: str = "SPC/E"
-    lattice_constant: Optional[float] = None
+    lattice_constant: float | None = None
     fix_bottom_layers: int = 0
     packmol_executable: str = "packmol"
     packmol_tolerance: float = 2.0
     seed: int = 12345
-    output_format: Optional[str] = None
+    output_format: str | None = None
     log: bool = False
     logger: Optional["MLIPLogger"] = None

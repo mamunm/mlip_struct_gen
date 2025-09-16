@@ -110,9 +110,9 @@ class SaltWaterBoxGeneratorParameters:
     output_file: str
 
     # Box parameters (pick any 2 of 3, same as water_box)
-    box_size: Optional[float | tuple[float, float, float]] = None
-    n_water: Optional[int] = None
-    density: Optional[float] = None  # Total solution density in g/cm³
+    box_size: float | tuple[float, float, float] | None = None
+    n_water: int | None = None
+    density: float | None = None  # Total solution density in g/cm³
 
     # Salt parameters
     salt_type: str = "NaCl"

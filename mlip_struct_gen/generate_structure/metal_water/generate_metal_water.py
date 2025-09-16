@@ -1,26 +1,26 @@
 """Metal-water interface generation using ASE and PACKMOL."""
 
-from pathlib import Path
-from typing import Optional, Tuple
-import numpy as np
+import os
 import subprocess
 import tempfile
-import os
+from pathlib import Path
+
+import numpy as np
 
 try:
     from ase import Atoms
     from ase.build import fcc111
-    from ase.io import read, write
     from ase.constraints import FixAtoms
+    from ase.io import read, write
 except ImportError:
     raise ImportError(
         "ASE (Atomic Simulation Environment) is required for metal-water generation. "
         "Install with: pip install ase"
     )
 
-from .input_parameters import MetalWaterParameters
-from .validation import validate_parameters, get_lattice_constant, get_water_model_params
 from ...utils.water_models import WATER_MODELS
+from .input_parameters import MetalWaterParameters
+from .validation import get_lattice_constant, get_water_model_params, validate_parameters
 
 
 class MetalWaterGenerator:
@@ -42,7 +42,7 @@ class MetalWaterGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: Optional["MLIPLogger"] = None
+        self.logger: MLIPLogger | None = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -50,6 +50,7 @@ class MetalWaterGenerator:
                 # Import here to avoid circular imports
                 try:
                     from ...utils.logger import MLIPLogger
+
                     self.logger = MLIPLogger()
                 except ImportError:
                     # Gracefully handle missing logger
@@ -57,8 +58,7 @@ class MetalWaterGenerator:
 
         # Get lattice constant
         self.lattice_constant = get_lattice_constant(
-            self.parameters.metal,
-            self.parameters.lattice_constant
+            self.parameters.metal, self.parameters.lattice_constant
         )
 
         # Get water model parameters
@@ -132,20 +132,18 @@ class MetalWaterGenerator:
             a=self.lattice_constant,
             orthogonal=True,
             vacuum=0.0,
-            periodic=True
+            periodic=True,
         )
 
         # Store box dimensions
         cell = self.metal_slab.get_cell()
-        self.box_dimensions = {
-            'x': cell[0, 0],
-            'y': cell[1, 1],
-            'z': cell[2, 2]
-        }
+        self.box_dimensions = {"x": cell[0, 0], "y": cell[1, 1], "z": cell[2, 2]}
 
         if self.logger:
             self.logger.info(f"Created surface with {len(self.metal_slab)} atoms")
-            self.logger.info(f"Box dimensions: {self.box_dimensions['x']:.2f} x {self.box_dimensions['y']:.2f} x {self.box_dimensions['z']:.2f} Å")
+            self.logger.info(
+                f"Box dimensions: {self.box_dimensions['x']:.2f} x {self.box_dimensions['y']:.2f} x {self.box_dimensions['z']:.2f} Å"
+            )
 
         # Apply constraints to fix bottom layers if requested
         if self.parameters.fix_bottom_layers > 0:
@@ -197,7 +195,7 @@ class MetalWaterGenerator:
         volume_A3 = mass_g / density_g_A3
 
         # Calculate height from volume
-        water_height = volume_A3 / (self.box_dimensions['x'] * self.box_dimensions['y'])
+        water_height = volume_A3 / (self.box_dimensions["x"] * self.box_dimensions["y"])
 
         if self.logger:
             self.logger.info(
@@ -226,18 +224,18 @@ class MetalWaterGenerator:
         margin_z_bottom = 3.0  # additional margin from metal top
         margin_z_top = 3.0  # margin from water top to boundary
 
-        water_x = self.box_dimensions['x'] - 2 * margin_xy
-        water_y = self.box_dimensions['y'] - 2 * margin_xy
+        water_x = self.box_dimensions["x"] - 2 * margin_xy
+        water_y = self.box_dimensions["y"] - 2 * margin_xy
         water_z_min = metal_cell_z + self.parameters.gap_above_metal + margin_z_bottom
         water_z_max = metal_cell_z + self.parameters.gap_above_metal + water_height - margin_z_top
 
         # Create water molecule file
-        water_xyz_path = os.path.join(tmpdir, 'water_molecule.xyz')
+        water_xyz_path = os.path.join(tmpdir, "water_molecule.xyz")
         self._create_water_molecule_file(water_xyz_path)
 
         # Create PACKMOL input
-        packmol_input_path = os.path.join(tmpdir, 'pack_water.inp')
-        water_output_path = os.path.join(tmpdir, 'water_box.xyz')
+        packmol_input_path = os.path.join(tmpdir, "pack_water.inp")
+        water_output_path = os.path.join(tmpdir, "water_box.xyz")
 
         packmol_input = f"""
 tolerance {self.parameters.packmol_tolerance}
@@ -251,13 +249,15 @@ structure {water_xyz_path}
 end structure
 """
 
-        with open(packmol_input_path, 'w') as f:
+        with open(packmol_input_path, "w") as f:
             f.write(packmol_input)
 
         if self.logger:
-            self.logger.info(f"Water box: x=[{margin_xy:.1f}, {water_x + margin_xy:.1f}], "
-                           f"y=[{margin_xy:.1f}, {water_y + margin_xy:.1f}], "
-                           f"z=[{water_z_min:.2f}, {water_z_max:.2f}]")
+            self.logger.info(
+                f"Water box: x=[{margin_xy:.1f}, {water_x + margin_xy:.1f}], "
+                f"y=[{margin_xy:.1f}, {water_y + margin_xy:.1f}], "
+                f"z=[{water_z_min:.2f}, {water_z_max:.2f}]"
+            )
 
         # Run PACKMOL
         self._run_packmol(packmol_input_path, water_output_path)
@@ -288,7 +288,7 @@ H    0.8164    0.0000    0.5773
 H   -0.8164    0.0000    0.5773
 """
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(water_xyz)
 
     def _run_packmol(self, input_path: str, output_path: str) -> None:
@@ -304,7 +304,7 @@ H   -0.8164    0.0000    0.5773
         """
         try:
             # Run PACKMOL using shell with input redirection
-            cmd = f'{self.parameters.packmol_executable} < {input_path}'
+            cmd = f"{self.parameters.packmol_executable} < {input_path}"
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
             if result.returncode == 0:
@@ -397,7 +397,7 @@ H   -0.8164    0.0000    0.5773
                 "poscar": "poscar",
                 "lammps": "lammps",
                 "data": "lammps",
-                "xyz": "xyz"
+                "xyz": "xyz",
             }
             return format_map.get(self.parameters.output_format.lower(), "lammps")
 
@@ -428,8 +428,8 @@ H   -0.8164    0.0000    0.5773
 
         # Count atoms by type
         n_metal = symbols.count(self.parameters.metal)
-        n_o = symbols.count('O')
-        n_h = symbols.count('H')
+        n_o = symbols.count("O")
+        n_h = symbols.count("H")
 
         # Sort atoms by element type (Metal, O, H)
         sorted_positions = []
@@ -441,18 +441,18 @@ H   -0.8164    0.0000    0.5773
 
         # Then add oxygen atoms
         for i, sym in enumerate(symbols):
-            if sym == 'O':
+            if sym == "O":
                 sorted_positions.append(positions[i])
 
         # Finally add hydrogen atoms
         for i, sym in enumerate(symbols):
-            if sym == 'H':
+            if sym == "H":
                 sorted_positions.append(positions[i])
 
         sorted_positions = np.array(sorted_positions)
 
         # Write POSCAR file
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             # Title
             f.write(f"{self.parameters.metal}(111) surface with {n_o} water molecules\n")
 
@@ -490,8 +490,8 @@ H   -0.8164    0.0000    0.5773
 
         # Count atoms by type
         n_metal = symbols.count(self.parameters.metal)
-        n_o = symbols.count('O')
-        n_h = symbols.count('H')
+        n_o = symbols.count("O")
+        n_h = symbols.count("H")
         n_water = n_o
 
         # Total counts
@@ -501,6 +501,7 @@ H   -0.8164    0.0000    0.5773
 
         # Get atomic masses
         from ase.data import atomic_masses, atomic_numbers
+
         metal_number = atomic_numbers[self.parameters.metal]
         metal_mass = atomic_masses[metal_number]
 
@@ -514,9 +515,11 @@ H   -0.8164    0.0000    0.5773
             o_charge = -0.8476
             h_charge = 0.4238
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             # Header
-            f.write(f"LAMMPS data file for {self.parameters.metal}(111) surface with {n_water} {self.parameters.water_model} water molecules\n\n")
+            f.write(
+                f"LAMMPS data file for {self.parameters.metal}(111) surface with {n_water} {self.parameters.water_model} water molecules\n\n"
+            )
 
             # Counts
             f.write(f"{n_atoms} atoms\n")
@@ -553,19 +556,25 @@ H   -0.8164    0.0000    0.5773
             # Write metal atoms first (molecule ID 1)
             for i in range(len(symbols)):
                 if symbols[i] == self.parameters.metal:
-                    f.write(f"{atom_id} {mol_id} 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    f.write(
+                        f"{atom_id} {mol_id} 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    )
                     atom_id += 1
 
             # Write water molecules (molecule IDs start from 2)
             mol_id = 2
             for i in range(len(symbols)):
-                if symbols[i] == 'O':
+                if symbols[i] == "O":
                     o_atoms.append(atom_id)
-                    f.write(f"{atom_id} {mol_id} 2 {o_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    f.write(
+                        f"{atom_id} {mol_id} 2 {o_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    )
                     atom_id += 1
-                elif symbols[i] == 'H':
+                elif symbols[i] == "H":
                     h_atoms.append(atom_id)
-                    f.write(f"{atom_id} {mol_id} 3 {h_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    f.write(
+                        f"{atom_id} {mol_id} 3 {h_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    )
                     atom_id += 1
                     # Increment molecule ID after every 3 water atoms (O + 2H)
                     if len(h_atoms) % 2 == 0:
@@ -577,8 +586,8 @@ H   -0.8164    0.0000    0.5773
                 bond_id = 1
                 for i, o_id in enumerate(o_atoms):
                     # Each oxygen bonds to next two hydrogens
-                    h1_id = h_atoms[2*i]
-                    h2_id = h_atoms[2*i + 1]
+                    h1_id = h_atoms[2 * i]
+                    h2_id = h_atoms[2 * i + 1]
                     f.write(f"{bond_id} 1 {o_id} {h1_id}\n")
                     bond_id += 1
                     f.write(f"{bond_id} 1 {o_id} {h2_id}\n")
@@ -589,8 +598,8 @@ H   -0.8164    0.0000    0.5773
                 f.write("\nAngles\n\n")
                 angle_id = 1
                 for i, o_id in enumerate(o_atoms):
-                    h1_id = h_atoms[2*i]
-                    h2_id = h_atoms[2*i + 1]
+                    h1_id = h_atoms[2 * i]
+                    h2_id = h_atoms[2 * i + 1]
                     f.write(f"{angle_id} 1 {h1_id} {o_id} {h2_id}\n")
                     angle_id += 1
 

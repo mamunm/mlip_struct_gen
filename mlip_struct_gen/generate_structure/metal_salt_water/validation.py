@@ -1,16 +1,26 @@
 """Validation for metal-salt-water interface generation parameters."""
 
-from pathlib import Path
-from typing import Set, Dict, Any
 import shutil
+from pathlib import Path
+from typing import Any
 
 from .input_parameters import MetalSaltWaterParameters
 
-
 # Supported FCC metals with experimental lattice constants (Angstroms)
-SUPPORTED_METALS: Set[str] = {
-    "Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt",
-    "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"
+SUPPORTED_METALS: set[str] = {
+    "Al",
+    "Au",
+    "Ag",
+    "Cu",
+    "Ni",
+    "Pd",
+    "Pt",
+    "Pb",
+    "Rh",
+    "Ir",
+    "Ca",
+    "Sr",
+    "Yb",
 }
 
 # Default lattice constants for common FCC metals (Angstroms)
@@ -27,7 +37,7 @@ DEFAULT_LATTICE_CONSTANTS = {
     "Ir": 3.839,
     "Ca": 5.588,
     "Sr": 6.085,
-    "Yb": 5.485
+    "Yb": 5.485,
 }
 
 # Supported salt types with their stoichiometry
@@ -113,13 +123,19 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
         raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
 
     if nz < 3:
-        raise ValueError(f"Number of layers (nz={nz}) must be at least 3 for proper surface representation")
+        raise ValueError(
+            f"Number of layers (nz={nz}) must be at least 3 for proper surface representation"
+        )
 
     if nx > 20 or ny > 20:
-        raise ValueError(f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency")
+        raise ValueError(
+            f"Lateral dimensions (nx={nx}, ny={ny}) should not exceed 20 for computational efficiency"
+        )
 
     if nz > 20:
-        raise ValueError(f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency")
+        raise ValueError(
+            f"Number of layers (nz={nz}) should not exceed 20 for computational efficiency"
+        )
 
     # Validate salt parameters
     if params.salt_type not in SUPPORTED_SALTS:
@@ -132,14 +148,18 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
         raise ValueError(f"n_salt ({params.n_salt}) must be non-negative")
 
     if params.n_salt > 1000:
-        raise ValueError(f"n_salt ({params.n_salt}) is very large (>1000). Consider computational cost.")
+        raise ValueError(
+            f"n_salt ({params.n_salt}) is very large (>1000). Consider computational cost."
+        )
 
     # Validate water parameters
     if params.n_water < 1:
         raise ValueError(f"n_water ({params.n_water}) must be at least 1")
 
     if params.n_water > 10000:
-        raise ValueError(f"n_water ({params.n_water}) is very large (>10000). Consider computational cost.")
+        raise ValueError(
+            f"n_water ({params.n_water}) is very large (>10000). Consider computational cost."
+        )
 
     if params.density <= 0:
         raise ValueError(f"density ({params.density} g/cm^3) must be positive")
@@ -162,15 +182,21 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
         raise ValueError(f"gap ({params.gap} Angstroms) is very large (>10 Angstroms)")
 
     if params.vacuum_above_water < 0:
-        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Angstroms) must be non-negative")
+        raise ValueError(
+            f"vacuum_above_water ({params.vacuum_above_water} Angstroms) must be non-negative"
+        )
 
     if params.vacuum_above_water > 50:
-        raise ValueError(f"vacuum_above_water ({params.vacuum_above_water} Angstroms) should not exceed 50 Angstroms")
+        raise ValueError(
+            f"vacuum_above_water ({params.vacuum_above_water} Angstroms) should not exceed 50 Angstroms"
+        )
 
     # Validate lattice constant if provided
     if params.lattice_constant is not None:
         if params.lattice_constant <= 0:
-            raise ValueError(f"Lattice constant ({params.lattice_constant} Angstroms) must be positive")
+            raise ValueError(
+                f"Lattice constant ({params.lattice_constant} Angstroms) must be positive"
+            )
 
         if params.lattice_constant < 2.0 or params.lattice_constant > 7.0:
             raise ValueError(
@@ -190,13 +216,19 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
 
     # Validate PACKMOL parameters
     if params.packmol_tolerance <= 0:
-        raise ValueError(f"packmol_tolerance ({params.packmol_tolerance} Angstroms) must be positive")
+        raise ValueError(
+            f"packmol_tolerance ({params.packmol_tolerance} Angstroms) must be positive"
+        )
 
     if params.packmol_tolerance < 1.0:
-        print(f"Warning: Small packmol_tolerance ({params.packmol_tolerance} Angstroms) may cause packing failures")
+        print(
+            f"Warning: Small packmol_tolerance ({params.packmol_tolerance} Angstroms) may cause packing failures"
+        )
 
     if params.packmol_tolerance > 3.0:
-        print(f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Angstroms) may result in poor packing")
+        print(
+            f"Warning: Large packmol_tolerance ({params.packmol_tolerance} Angstroms) may result in poor packing"
+        )
 
     # Validate seed
     if params.seed is not None and params.seed < 0:
@@ -226,7 +258,9 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
         suffix = output_path.suffix.lower()
         valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data"}
         if suffix and suffix not in valid_extensions and output_path.name.upper() != "POSCAR":
-            print(f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default.")
+            print(
+                f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default."
+            )
 
 
 def get_lattice_constant(metal: str, custom_lattice: float = None) -> float:
@@ -274,7 +308,7 @@ def get_water_model_params(model: str) -> dict:
     return WATER_MODELS[model]
 
 
-def get_salt_info(salt_type: str) -> Dict[str, Any]:
+def get_salt_info(salt_type: str) -> dict[str, Any]:
     """
     Get salt information including stoichiometry and ion types.
 
@@ -293,7 +327,7 @@ def get_salt_info(salt_type: str) -> Dict[str, Any]:
     return SUPPORTED_SALTS[salt_type]
 
 
-def get_ion_params(ion: str) -> Dict[str, Any]:
+def get_ion_params(ion: str) -> dict[str, Any]:
     """
     Get ion parameters including mass, charge, and radius.
 

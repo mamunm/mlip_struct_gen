@@ -49,7 +49,7 @@ def _convert_paths_to_strings(obj: Any) -> Any:
         return str(obj)
     elif isinstance(obj, dict):
         return {key: _convert_paths_to_strings(value) for key, value in obj.items()}
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, list | tuple):
         return type(obj)(_convert_paths_to_strings(item) for item in obj)
     else:
         return obj

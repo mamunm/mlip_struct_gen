@@ -1,32 +1,32 @@
 """Metal-salt-water interface generation using ASE and PACKMOL."""
 
-from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
-import numpy as np
+import os
 import subprocess
 import tempfile
-import os
+from pathlib import Path
+
+import numpy as np
 
 try:
     from ase import Atoms
     from ase.build import fcc111
-    from ase.io import read, write
     from ase.constraints import FixAtoms
+    from ase.io import read, write
 except ImportError:
     raise ImportError(
         "ASE (Atomic Simulation Environment) is required for metal-salt-water generation. "
         "Install with: pip install ase"
     )
 
+from ...utils.water_models import WATER_MODELS
 from .input_parameters import MetalSaltWaterParameters
 from .validation import (
-    validate_parameters,
+    get_ion_params,
     get_lattice_constant,
-    get_water_model_params,
     get_salt_info,
-    get_ion_params
+    get_water_model_params,
+    validate_parameters,
 )
-from ...utils.water_models import WATER_MODELS
 
 
 class MetalSaltWaterGenerator:
@@ -48,7 +48,7 @@ class MetalSaltWaterGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: Optional["MLIPLogger"] = None
+        self.logger: MLIPLogger | None = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -56,6 +56,7 @@ class MetalSaltWaterGenerator:
                 # Import here to avoid circular imports
                 try:
                     from ...utils.logger import MLIPLogger
+
                     self.logger = MLIPLogger()
                 except ImportError:
                     # Gracefully handle missing logger
@@ -63,8 +64,7 @@ class MetalSaltWaterGenerator:
 
         # Get lattice constant
         self.lattice_constant = get_lattice_constant(
-            self.parameters.metal,
-            self.parameters.lattice_constant
+            self.parameters.metal, self.parameters.lattice_constant
         )
 
         # Get water model parameters
@@ -83,7 +83,9 @@ class MetalSaltWaterGenerator:
             self.logger.info("Initializing MetalSaltWaterGenerator")
             self.logger.info(f"Metal: {self.parameters.metal}")
             self.logger.info(f"Metal size: {self.parameters.size}")
-            self.logger.info(f"Salt: {self.parameters.salt_type} ({self.parameters.n_salt} formula units)")
+            self.logger.info(
+                f"Salt: {self.parameters.salt_type} ({self.parameters.n_salt} formula units)"
+            )
             self.logger.info(f"Water molecules: {self.parameters.n_water}")
             self.logger.info(f"Lattice constant: {self.lattice_constant:.3f} Å")
 
@@ -142,20 +144,18 @@ class MetalSaltWaterGenerator:
             a=self.lattice_constant,
             orthogonal=True,
             vacuum=0.0,
-            periodic=True
+            periodic=True,
         )
 
         # Store box dimensions
         cell = self.metal_slab.get_cell()
-        self.box_dimensions = {
-            'x': cell[0, 0],
-            'y': cell[1, 1],
-            'z': cell[2, 2]
-        }
+        self.box_dimensions = {"x": cell[0, 0], "y": cell[1, 1], "z": cell[2, 2]}
 
         if self.logger:
             self.logger.info(f"Created surface with {len(self.metal_slab)} atoms")
-            self.logger.info(f"Box dimensions: {self.box_dimensions['x']:.2f} x {self.box_dimensions['y']:.2f} x {self.box_dimensions['z']:.2f} Å")
+            self.logger.info(
+                f"Box dimensions: {self.box_dimensions['x']:.2f} x {self.box_dimensions['y']:.2f} x {self.box_dimensions['z']:.2f} Å"
+            )
 
         # Apply constraints to fix bottom layers if requested
         if self.parameters.fix_bottom_layers > 0:
@@ -222,7 +222,7 @@ class MetalSaltWaterGenerator:
         volume_A3 = total_mass_g / density_g_A3
 
         # Calculate height from volume
-        solution_height = volume_A3 / (self.box_dimensions['x'] * self.box_dimensions['y'])
+        solution_height = volume_A3 / (self.box_dimensions["x"] * self.box_dimensions["y"])
 
         if self.logger:
             if self.parameters.include_salt_volume:
@@ -258,18 +258,18 @@ class MetalSaltWaterGenerator:
         margin_z_bottom = 3.0  # additional margin from metal top
         margin_z_top = 3.0  # margin from solution top to boundary
 
-        solution_x = self.box_dimensions['x'] - 2 * margin_xy
-        solution_y = self.box_dimensions['y'] - 2 * margin_xy
+        solution_x = self.box_dimensions["x"] - 2 * margin_xy
+        solution_y = self.box_dimensions["y"] - 2 * margin_xy
         solution_z_min = metal_cell_z + self.parameters.gap + margin_z_bottom
         solution_z_max = metal_cell_z + self.parameters.gap + solution_height - margin_z_top
 
         # Create molecule files
-        water_xyz_path = os.path.join(tmpdir, 'water_molecule.xyz')
+        water_xyz_path = os.path.join(tmpdir, "water_molecule.xyz")
         self._create_water_molecule_file(water_xyz_path)
 
         # Create PACKMOL input
-        packmol_input_path = os.path.join(tmpdir, 'pack_solution.inp')
-        solution_output_path = os.path.join(tmpdir, 'solution_box.xyz')
+        packmol_input_path = os.path.join(tmpdir, "pack_solution.inp")
+        solution_output_path = os.path.join(tmpdir, "solution_box.xyz")
 
         # Build PACKMOL input with water and ions
         packmol_input = f"""
@@ -313,15 +313,19 @@ structure {anion_xyz_path}
 end structure
 """
 
-        with open(packmol_input_path, 'w') as f:
+        with open(packmol_input_path, "w") as f:
             f.write(packmol_input)
 
         if self.logger:
-            self.logger.info(f"Solution box: x=[{margin_xy:.1f}, {solution_x + margin_xy:.1f}], "
-                           f"y=[{margin_xy:.1f}, {solution_y + margin_xy:.1f}], "
-                           f"z=[{solution_z_min:.2f}, {solution_z_max:.2f}]")
+            self.logger.info(
+                f"Solution box: x=[{margin_xy:.1f}, {solution_x + margin_xy:.1f}], "
+                f"y=[{margin_xy:.1f}, {solution_y + margin_xy:.1f}], "
+                f"z=[{solution_z_min:.2f}, {solution_z_max:.2f}]"
+            )
             if self.parameters.n_salt > 0:
-                self.logger.info(f"  Ions: {n_cations} {self.salt_info['cation']}+ and {n_anions} {self.salt_info['anion']}-")
+                self.logger.info(
+                    f"  Ions: {n_cations} {self.salt_info['cation']}+ and {n_anions} {self.salt_info['anion']}-"
+                )
 
         # Run PACKMOL
         self._run_packmol(packmol_input_path, solution_output_path)
@@ -352,7 +356,7 @@ H    0.8164    0.0000    0.5773
 H   -0.8164    0.0000    0.5773
 """
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(water_xyz)
 
     def _create_ion_file(self, ion: str, filepath: str) -> None:
@@ -367,7 +371,7 @@ H   -0.8164    0.0000    0.5773
 {ion} ion
 {ion}    0.0000    0.0000    0.0000
 """
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(ion_xyz)
 
     def _run_packmol(self, input_path: str, output_path: str) -> None:
@@ -383,7 +387,7 @@ H   -0.8164    0.0000    0.5773
         """
         try:
             # Run PACKMOL using shell with input redirection
-            cmd = f'{self.parameters.packmol_executable} < {input_path}'
+            cmd = f"{self.parameters.packmol_executable} < {input_path}"
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
             if result.returncode == 0:
@@ -412,7 +416,7 @@ H   -0.8164    0.0000    0.5773
 
         # Count components
         symbols = self.solution_atoms.get_chemical_symbols()
-        n_water = symbols.count('O')
+        n_water = symbols.count("O")
 
         if self.parameters.n_salt > 0:
             n_cations = symbols.count(self.salt_info["cation"])
@@ -435,7 +439,7 @@ H   -0.8164    0.0000    0.5773
         """Adjust the cell to have exact vacuum above the solution layer."""
         if self.combined_system is None:
             raise ValueError("Combine metal and solution first")
-        
+
         metal_cell_z = self.metal_slab.get_cell()[2, 2]
         solution_height = self._calculate_solution_height()
         total_height = metal_cell_z + solution_height + self.parameters.gap
@@ -490,7 +494,7 @@ H   -0.8164    0.0000    0.5773
                 "poscar": "poscar",
                 "lammps": "lammps",
                 "data": "lammps",
-                "xyz": "xyz"
+                "xyz": "xyz",
             }
             return format_map.get(self.parameters.output_format.lower(), "lammps")
 
@@ -544,10 +548,12 @@ H   -0.8164    0.0000    0.5773
         sorted_positions = np.array(sorted_positions)
 
         # Write POSCAR file
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             # Title
             n_water = symbols.count("O")
-            f.write(f"{self.parameters.metal}(111) surface with {self.parameters.salt_type} and {n_water} water molecules\n")
+            f.write(
+                f"{self.parameters.metal}(111) surface with {self.parameters.salt_type} and {n_water} water molecules\n"
+            )
 
             # Scaling factor
             f.write("1.0\n")
@@ -583,8 +589,8 @@ H   -0.8164    0.0000    0.5773
 
         # Count atoms by type
         n_metal = symbols.count(self.parameters.metal)
-        n_o = symbols.count('O')
-        n_h = symbols.count('H')
+        n_o = symbols.count("O")
+        n_h = symbols.count("H")
         n_water = n_o
 
         # Count ions
@@ -606,6 +612,7 @@ H   -0.8164    0.0000    0.5773
 
         # Get atomic masses
         from ase.data import atomic_masses, atomic_numbers
+
         metal_number = atomic_numbers[self.parameters.metal]
         metal_mass = atomic_masses[metal_number]
 
@@ -626,10 +633,12 @@ H   -0.8164    0.0000    0.5773
             o_charge = -0.8476
             h_charge = 0.4238
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             # Header
             f.write(f"LAMMPS data file for {self.parameters.metal}(111) surface with ")
-            f.write(f"{self.parameters.salt_type} and {n_water} {self.parameters.water_model} water molecules\n\n")
+            f.write(
+                f"{self.parameters.salt_type} and {n_water} {self.parameters.water_model} water molecules\n\n"
+            )
 
             # Counts
             f.write(f"{n_atoms} atoms\n")
@@ -675,7 +684,9 @@ H   -0.8164    0.0000    0.5773
             # Write metal atoms first (molecule ID 1)
             for i in range(len(symbols)):
                 if symbols[i] == self.parameters.metal:
-                    f.write(f"{atom_id} {mol_id} 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                    f.write(
+                        f"{atom_id} {mol_id} 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    )
                     atom_id += 1
 
             # Write ions if present (each ion gets its own molecule ID)
@@ -706,12 +717,12 @@ H   -0.8164    0.0000    0.5773
             h_count = 0
 
             for i in range(len(symbols)):
-                if symbols[i] == 'O':
+                if symbols[i] == "O":
                     o_atoms.append(atom_id)
                     f.write(f"{atom_id} {mol_id} {o_type} {o_charge:.4f} ")
                     f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
                     atom_id += 1
-                elif symbols[i] == 'H':
+                elif symbols[i] == "H":
                     h_atoms.append(atom_id)
                     f.write(f"{atom_id} {mol_id} {h_type} {h_charge:.4f} ")
                     f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
@@ -727,8 +738,8 @@ H   -0.8164    0.0000    0.5773
                 bond_id = 1
                 for i, o_id in enumerate(o_atoms):
                     # Each oxygen bonds to next two hydrogens
-                    h1_id = h_atoms[2*i]
-                    h2_id = h_atoms[2*i + 1]
+                    h1_id = h_atoms[2 * i]
+                    h2_id = h_atoms[2 * i + 1]
                     f.write(f"{bond_id} 1 {o_id} {h1_id}\n")
                     bond_id += 1
                     f.write(f"{bond_id} 1 {o_id} {h2_id}\n")
@@ -739,8 +750,8 @@ H   -0.8164    0.0000    0.5773
                 f.write("\nAngles\n\n")
                 angle_id = 1
                 for i, o_id in enumerate(o_atoms):
-                    h1_id = h_atoms[2*i]
-                    h2_id = h_atoms[2*i + 1]
+                    h1_id = h_atoms[2 * i]
+                    h2_id = h_atoms[2 * i + 1]
                     f.write(f"{angle_id} 1 {h1_id} {o_id} {h2_id}\n")
                     angle_id += 1
 

@@ -28,10 +28,11 @@ class WaterBoxGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger first
-        from typing import TYPE_CHECKING, Optional
+        from typing import TYPE_CHECKING
+
         if TYPE_CHECKING:
             from ...utils.logger import MLIPLogger
-        self.logger: Optional["MLIPLogger"] = None
+        self.logger: MLIPLogger | None = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -39,6 +40,7 @@ class WaterBoxGenerator:
                 # Import here to avoid circular imports
                 try:
                     from ...utils.logger import MLIPLogger
+
                     self.logger = MLIPLogger()
                 except ImportError:
                     # Gracefully handle missing logger
@@ -67,7 +69,7 @@ class WaterBoxGenerator:
                 input="",  # Empty input
                 capture_output=True,
                 timeout=5,  # 5 second timeout
-                text=True
+                text=True,
             )
             # Packmol exits with code 171 when given empty input - this is expected
             if result.returncode == 171:
@@ -75,13 +77,19 @@ class WaterBoxGenerator:
                     self.logger.success(f"Packmol found: {self.parameters.packmol_executable}")
                     # Extract version from stderr if available
                     if "Version" in result.stderr:
-                        version_line = [line for line in result.stderr.split('\n') if "Version" in line]
+                        version_line = [
+                            line for line in result.stderr.split("\n") if "Version" in line
+                        ]
                         if version_line:
                             self.logger.debug(f"Packmol {version_line[0].strip()}")
             else:
                 if self.logger:
-                    self.logger.warning(f"Packmol returned unexpected exit code: {result.returncode}")
-                    self.logger.success(f"But Packmol executable appears to be working: {self.parameters.packmol_executable}")
+                    self.logger.warning(
+                        f"Packmol returned unexpected exit code: {result.returncode}"
+                    )
+                    self.logger.success(
+                        f"But Packmol executable appears to be working: {self.parameters.packmol_executable}"
+                    )
 
         except subprocess.TimeoutExpired:
             if self.logger:
@@ -92,7 +100,9 @@ class WaterBoxGenerator:
             ) from None
         except FileNotFoundError:
             if self.logger:
-                self.logger.error(f"Packmol executable '{self.parameters.packmol_executable}' not found in PATH")
+                self.logger.error(
+                    f"Packmol executable '{self.parameters.packmol_executable}' not found in PATH"
+                )
             raise RuntimeError(
                 f"Packmol executable '{self.parameters.packmol_executable}' not found. "
                 "Please install packmol:\n"
@@ -126,17 +136,21 @@ class WaterBoxGenerator:
                 assert self.parameters.box_size is not None  # Type guard for mypy
                 # After validation, box_size is always tuple[float, float, float]
                 n_water = self._calculate_molecules_custom_density(
-                    self.parameters.box_size, self.parameters.density  # type: ignore[arg-type]
+                    self.parameters.box_size,
+                    self.parameters.density,  # type: ignore[arg-type]
                 )
             else:
                 # Use water model's default density
                 model_density = get_water_density(self.parameters.water_model)
                 if self.logger:
-                    self.logger.info(f"Using {self.parameters.water_model} default density: {model_density} g/cm³")
+                    self.logger.info(
+                        f"Using {self.parameters.water_model} default density: {model_density} g/cm³"
+                    )
                 assert self.parameters.box_size is not None  # Type guard for mypy
                 # After validation, box_size is always tuple[float, float, float]
                 n_water = self._calculate_molecules_custom_density(
-                    self.parameters.box_size, model_density  # type: ignore[arg-type]
+                    self.parameters.box_size,
+                    model_density,  # type: ignore[arg-type]
                 )
 
         if self.logger:
@@ -180,10 +194,13 @@ class WaterBoxGenerator:
             assert self.parameters.box_size is not None  # Type guard for mypy
             # After validation, box_size is always tuple[float, float, float]
             self._create_packmol_input(
-                input_file, water_xyz, temp_output,
+                input_file,
+                water_xyz,
+                temp_output,
                 self.parameters.box_size,  # type: ignore[arg-type]
                 n_water,
-                self.parameters.tolerance, self.parameters.seed
+                self.parameters.tolerance,
+                self.parameters.seed,
             )
 
             # Run packmol (always generates XYZ)
@@ -219,9 +236,7 @@ class WaterBoxGenerator:
         return str(output_path)
 
     def _calculate_molecules_custom_density(
-        self,
-        box_size: tuple[float, float, float],
-        density: float
+        self, box_size: tuple[float, float, float], density: float
     ) -> int:
         """Calculate number of molecules for custom density."""
         # Box volume in cm³
@@ -263,22 +278,28 @@ class WaterBoxGenerator:
         volume_angstrom3 = volume_cm3 * 1e24
 
         # Calculate cubic box size
-        box_size = volume_angstrom3 ** (1/3)
+        box_size = volume_angstrom3 ** (1 / 3)
 
         # Set as cubic box
         self.parameters.box_size = (box_size, box_size, box_size)
 
         # Log the computed box size
         if self.logger:
-            self.logger.info(f"Computed box size from {self.parameters.n_water} molecules: {box_size:.2f} Å (cubic)")
+            self.logger.info(
+                f"Computed box size from {self.parameters.n_water} molecules: {box_size:.2f} Å (cubic)"
+            )
             self.logger.info(f"Using density: {density:.3f} g/cm³")
 
         # Validate the computed box size
         if any(s > 1000.0 for s in self.parameters.box_size):
-            raise ValueError(f"Computed box dimensions too large ({box_size:.1f} Å). Check n_water or density.")
+            raise ValueError(
+                f"Computed box dimensions too large ({box_size:.1f} Å). Check n_water or density."
+            )
 
         if any(s < 5.0 for s in self.parameters.box_size):
-            raise ValueError(f"Computed box dimensions too small ({box_size:.1f} Å). Check n_water or density.")
+            raise ValueError(
+                f"Computed box dimensions too small ({box_size:.1f} Å). Check n_water or density."
+            )
 
     def _create_packmol_input(
         self,
@@ -288,7 +309,7 @@ class WaterBoxGenerator:
         box_size: tuple[float, float, float],
         n_water: int,
         tolerance: float,
-        seed: int
+        seed: int,
     ) -> None:
         """Create Packmol input file (always XYZ format)."""
         # Calculate box boundaries with tolerance buffer
@@ -299,7 +320,7 @@ class WaterBoxGenerator:
         y_high = box_size[1] - 0.5 * tolerance
         z_high = box_size[2] - 0.5 * tolerance
 
-        with open(input_file, 'w') as f:
+        with open(input_file, "w") as f:
             f.write(f"tolerance {tolerance}\n")
             f.write("filetype xyz\n")
             f.write(f"output {output_file.name}\n")  # Use relative path
@@ -322,7 +343,7 @@ class WaterBoxGenerator:
                 capture_output=True,
                 text=True,
                 check=True,
-                cwd=str(work_dir)
+                cwd=str(work_dir),
             )
 
             if self.logger:
@@ -341,9 +362,7 @@ class WaterBoxGenerator:
             ) from e
 
     def estimate_box_size(
-        self,
-        n_water: int,
-        aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 1.0)
+        self, n_water: int, aspect_ratio: tuple[float, float, float] = (1.0, 1.0, 1.0)
     ) -> tuple[float, float, float]:
         """
         Estimate box size needed for given number of water molecules.
@@ -372,13 +391,9 @@ class WaterBoxGenerator:
 
         # Calculate box dimensions with given aspect ratio
         ratio_product = aspect_ratio[0] * aspect_ratio[1] * aspect_ratio[2]
-        scale = (volume_angstrom3 / ratio_product) ** (1/3)
+        scale = (volume_angstrom3 / ratio_product) ** (1 / 3)
 
-        box_size = (
-            scale * aspect_ratio[0],
-            scale * aspect_ratio[1],
-            scale * aspect_ratio[2]
-        )
+        box_size = (scale * aspect_ratio[0], scale * aspect_ratio[1], scale * aspect_ratio[2])
 
         return box_size
 
@@ -407,18 +422,19 @@ class WaterBoxGenerator:
 
         # Get water model charges
         from ..templates.water_models import get_water_model
+
         water_model = get_water_model(self.parameters.water_model)
         charges = {atom["element"]: atom["charge"] for atom in water_model["atoms"]}
 
         # Write LAMMPS data file
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(f"# LAMMPS data file for {self.parameters.water_model} water box\n")
             f.write("# Generated by mlip-struct-gen\n\n")
 
             # Counts section
             f.write(f"{n_atoms} atoms\n")
             f.write(f"{n_water * 2} bonds\n")  # 2 bonds per water molecule (O-H, O-H)
-            f.write(f"{n_water} angles\n")     # 1 angle per water molecule (H-O-H)
+            f.write(f"{n_water} angles\n")  # 1 angle per water molecule (H-O-H)
             f.write("\n")
 
             # Types section
@@ -448,10 +464,12 @@ class WaterBoxGenerator:
             for mol_id in range(1, n_water + 1):
                 for j in range(3):  # O, H, H for each molecule
                     element, x, y, z = atoms[(mol_id - 1) * 3 + j]
-                    atom_type = 1 if element == 'O' else 2
+                    atom_type = 1 if element == "O" else 2
                     charge = charges[element]
-                    f.write(f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {charge:10.6f} "
-                           f"{x:12.6f} {y:12.6f} {z:12.6f}\n")
+                    f.write(
+                        f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {charge:10.6f} "
+                        f"{x:12.6f} {y:12.6f} {z:12.6f}\n"
+                    )
                     atom_id += 1
             f.write("\n")
 
@@ -478,7 +496,9 @@ class WaterBoxGenerator:
                 angle_id += 1
 
         if self.logger:
-            self.logger.success(f"Successfully converted to LAMMPS data format with {n_water * 2} bonds and {n_water} angles")
+            self.logger.success(
+                f"Successfully converted to LAMMPS data format with {n_water * 2} bonds and {n_water} angles"
+            )
 
     def _convert_xyz_to_poscar(self, input_xyz: Path, output_file: Path) -> None:
         """
@@ -491,7 +511,9 @@ class WaterBoxGenerator:
         try:
             from ase import Atoms, io
         except ImportError:
-            raise ImportError("ASE is required for POSCAR format. Install with: pip install ase") from None
+            raise ImportError(
+                "ASE is required for POSCAR format. Install with: pip install ase"
+            ) from None
 
         # Read the XYZ file
         atoms = io.read(str(input_xyz))  # type: ignore[assignment]
@@ -516,15 +538,16 @@ class WaterBoxGenerator:
         sorted_positions = [p for _, p in atom_data]
 
         # Create new atoms object with sorted atoms
-        sorted_atoms = Atoms(symbols=sorted_symbols, positions=sorted_positions,
-                            cell=atoms.cell, pbc=True)  # type: ignore
+        sorted_atoms = Atoms(
+            symbols=sorted_symbols, positions=sorted_positions, cell=atoms.cell, pbc=True
+        )  # type: ignore
 
         # Write as POSCAR with proper formatting
-        io.write(str(output_file), sorted_atoms, format='vasp', direct=False, sort=False)
+        io.write(str(output_file), sorted_atoms, format="vasp", direct=False, sort=False)
 
         # Count O and H atoms
-        n_oxygen = sum(1 for s in sorted_symbols if s == 'O')
-        n_hydrogen = sum(1 for s in sorted_symbols if s == 'H')
+        n_oxygen = sum(1 for s in sorted_symbols if s == "O")
+        n_hydrogen = sum(1 for s in sorted_symbols if s == "H")
 
         if self.logger:
             self.logger.success("Successfully converted to POSCAR format")
