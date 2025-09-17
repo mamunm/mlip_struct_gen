@@ -114,6 +114,8 @@ known-first-party = ["mlip_struct_gen"]
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = false
 
+# Mypy configuration (for manual runs, not in pre-commit)
+# Run manually with: uv run mypy mlip_struct_gen
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
@@ -133,6 +135,7 @@ exclude = [
     "build/",
     "dist/",
     "examples/",
+    "experiments/",
 ]
 
 [[tool.mypy.overrides]]
