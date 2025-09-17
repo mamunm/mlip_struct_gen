@@ -48,7 +48,7 @@ repos:
     rev: v2.2.6
     hooks:
       - id: codespell
-        args: ['--skip', '*.ipynb,*.json,*.csv']
+        args: ['--skip', '*.ipynb,*.json,*.csv', '--ignore-words-list', 'coul,ecoul,evdwl,elong,etail']
         additional_dependencies:
           - tomli
 

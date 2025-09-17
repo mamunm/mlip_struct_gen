@@ -26,9 +26,7 @@ dependencies = [
     "numpy>=1.24.0",
     "ase>=3.22.0",
     "rich>=13.0.0",
-    "lammps>=2024.8.29.3.0",
     "dpdata>=0.2.24",
-    "tensorflow>=2.19.0",
 ]
 
 [project.scripts]
@@ -38,6 +36,7 @@ mlip-salt-water-box = "mlip_struct_gen.cli.generators.salt_water_box:main"
 mlip-metal-surface = "mlip_struct_gen.cli.generators.metal_surface:main"
 mlip-metal-water = "mlip_struct_gen.cli.generators.metal_water:main"
 mlip-metal-salt-water = "mlip_struct_gen.cli.generators.metal_salt_water:main"
+mlip-lammps-water = "mlip_struct_gen.cli.lammps.water_box:main"
 
 [project.optional-dependencies]
 dev = [
