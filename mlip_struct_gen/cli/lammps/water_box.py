@@ -10,6 +10,9 @@ from mlip_struct_gen.generate_lammps_input.water_box import (
     WaterBoxLAMMPSParameters,
 )
 from mlip_struct_gen.utils.json_utils import save_parameters_to_json
+from mlip_struct_gen.utils.logger import MLIPLogger
+
+logger = MLIPLogger()
 
 
 def add_parser(parser: argparse.ArgumentParser) -> None:
@@ -152,28 +155,27 @@ Examples:
         generator = WaterBoxLAMMPSGenerator(params)
         generator.run()
 
-        # Print summary
+        # Log summary
         if len(params.temperatures) > 1:
-            print(f"Successfully generated {len(params.temperatures)} LAMMPS input files:")
+            logger.info(f"Successfully generated {len(params.temperatures)} LAMMPS input files:")
             for temp in params.temperatures:
                 data_stem = Path(params.data_file).stem
-                print(f"  - in_{data_stem}_T{temp:.0f}.lammps")
+                logger.info(f"  - in_{data_stem}_T{temp:.0f}.lammps")
         else:
-            print(f"Successfully generated LAMMPS input file: {params.output_file}")
+            logger.info(f"Successfully generated LAMMPS input file: {params.output_file}")
 
-        print("\nSimulation details:")
-        print(f"  Ensemble: {params.ensemble}")
-        print(f"  Temperature(s): {params.temperatures} K")
+        logger.info(f"Ensemble: {params.ensemble}")
+        logger.info(f"Temperature(s): {params.temperatures} K")
         if params.ensemble == "NPT":
-            print(f"  Pressure: {params.pressure} bar")
-        print(f"  Equilibration: {params.equilibration_time} ps")
-        print(f"  Production: {params.production_time} ps")
-        print(f"  MLIP sampling: every {params.dump_frequency} ps")
+            logger.info(f"Pressure: {params.pressure} bar")
+        logger.info(f"Equilibration: {params.equilibration_time} ps")
+        logger.info(f"Production: {params.production_time} ps")
+        logger.info(f"MLIP sampling: every {params.dump_frequency} ps")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         return 1
 
 

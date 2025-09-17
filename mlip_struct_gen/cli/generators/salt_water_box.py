@@ -11,6 +11,8 @@ from ...generate_structure.salt_water_box import (
 from ...utils.json_utils import save_parameters_to_json
 from ...utils.logger import MLIPLogger
 
+logger = MLIPLogger()
+
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
     """Add the salt-water-box subcommand parser."""
@@ -197,10 +199,7 @@ def validate_args(args: argparse.Namespace) -> None:
     # Check box-size format
     if args.box_size is not None:
         if len(args.box_size) not in [1, 3]:
-            print(
-                "Error: --box-size must have 1 value (cubic) or 3 values (rectangular)",
-                file=sys.stderr,
-            )
+            logger.error("--box-size must have 1 value (cubic) or 3 values (rectangular)")
             sys.exit(1)
         if len(args.box_size) == 3:
             args.box_size = tuple(args.box_size)
@@ -218,40 +217,28 @@ def validate_args(args: argparse.Namespace) -> None:
 
     # Check valid combinations
     if params_count == 0:
-        print(
-            "Error: Must specify at least one of: --box-size, --n-water, --density", file=sys.stderr
-        )
+        logger.error("Must specify at least one of: --box-size, --n-water, --density")
         sys.exit(1)
     elif params_count == 3:
-        print(
-            "Error: Cannot specify all three: --box-size, --n-water, and --density", file=sys.stderr
-        )
-        print("       Please specify only 2 of these 3 parameters", file=sys.stderr)
+        logger.error("Cannot specify all three: --box-size, --n-water, and --density")
+        logger.error("Please specify only 2 of these 3 parameters")
         sys.exit(1)
 
     # Need at least box_size OR n_water
     if args.box_size is None and args.n_water is None:
-        print("Error: Must specify either --box-size or --n-water", file=sys.stderr)
+        logger.error("Must specify either --box-size or --n-water")
         sys.exit(1)
 
     # Check that include-salt-volume is not used with box-size
     if args.box_size is not None and args.include_salt_volume:
-        print(
-            "Error: Cannot use --include-salt-volume when --box-size is specified", file=sys.stderr
-        )
-        print(
-            "       Ion volume adjustment is only available when box size is computed",
-            file=sys.stderr,
-        )
+        logger.error("Cannot use --include-salt-volume when --box-size is specified")
+        logger.error("Ion volume adjustment is only available when box size is computed")
         sys.exit(1)
 
     # Check output file
     output_path = Path(args.output)
     if output_path.exists() and not args.force:
-        print(
-            f"Error: Output file '{args.output}' already exists. Use --force to overwrite",
-            file=sys.stderr,
-        )
+        logger.error(f"Output file '{args.output}' already exists. Use --force to overwrite")
         sys.exit(1)
 
     # Infer output format from extension if not specified
@@ -267,10 +254,7 @@ def validate_args(args: argparse.Namespace) -> None:
             # Default to lammps for salt water
             args.output_format = "lammps"
             if args.log:
-                print(
-                    f"Warning: Could not infer format from '{suffix}', using LAMMPS format",
-                    file=sys.stderr,
-                )
+                logger.warning(f"Could not infer format from '{suffix}', using LAMMPS format")
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -288,26 +272,26 @@ def handle_command(args: argparse.Namespace) -> int:
 
     # Dry run
     if args.dry_run:
-        print("Dry run - would generate salt water box with:")
-        print(f"  Output: {args.output}")
-        print(f"  Format: {args.output_format}")
-        print(f"  Water model: {args.water_model}")
-        print(f"  Salt: {args.salt_type} ({args.n_salt} formula units)")
+        logger.info("Dry run - would generate salt water box with:")
+        logger.info(f"  Output: {args.output}")
+        logger.info(f"  Format: {args.output_format}")
+        logger.info(f"  Water model: {args.water_model}")
+        logger.info(f"  Salt: {args.salt_type} ({args.n_salt} formula units)")
         if args.box_size is not None:
-            print(f"  Box size: {args.box_size}")
+            logger.info(f"  Box size: {args.box_size}")
         if args.n_water is not None:
-            print(f"  Water molecules: {args.n_water}")
+            logger.info(f"  Water molecules: {args.n_water}")
         if args.density is not None:
-            print(f"  Density: {args.density} g/cm³")
+            logger.info(f"  Density: {args.density} g/cm³")
         if args.include_salt_volume:
-            print("  Including ion volume in calculations")
-        print(f"  Tolerance: {args.tolerance} Å")
-        print(f"  Seed: {args.seed}")
+            logger.info("  Including ion volume in calculations")
+        logger.info(f"  Tolerance: {args.tolerance} Å")
+        logger.info(f"  Seed: {args.seed}")
         return 0
 
     try:
-        # Create logger if requested
-        logger = MLIPLogger() if args.log else None
+        # Use logger if requested
+        param_logger = logger if args.log else None
 
         # Create parameters
         params = SaltWaterBoxGeneratorParameters(
@@ -324,7 +308,7 @@ def handle_command(args: argparse.Namespace) -> int:
             packmol_executable=args.packmol_executable,
             output_format=args.output_format,
             log=args.log,
-            logger=logger,
+            logger=param_logger,
         )
 
         # Save input parameters if requested
@@ -336,31 +320,31 @@ def handle_command(args: argparse.Namespace) -> int:
 
         # Generate salt water box
         if not getattr(args, "quiet", False):
-            print("Generating salt water box...")
+            logger.info("Generating salt water box...")
 
         output_file = generator.run(save_artifacts=args.save_artifacts)
 
         if not getattr(args, "quiet", False):
-            print(f"Successfully generated: {output_file}")
+            logger.info(f"Successfully generated: {output_file}")
 
-            # Print summary
+            # Log summary
             if args.box_size is not None:
                 if isinstance(args.box_size, tuple):
-                    print(
+                    logger.info(
                         f"  Box size: {args.box_size[0]} x {args.box_size[1]} x {args.box_size[2]} Å"
                     )
                 else:
-                    print(f"  Box size: {args.box_size} x {args.box_size} x {args.box_size} Å")
+                    logger.info(f"  Box size: {args.box_size} x {args.box_size} x {args.box_size} Å")
 
-            print(f"  Salt: {args.salt_type} ({args.n_salt} formula units)")
+            logger.info(f"  Salt: {args.salt_type} ({args.n_salt} formula units)")
 
             if args.save_artifacts:
-                print("  Artifacts saved in 'artifacts' directory")
+                logger.info("  Artifacts saved in 'artifacts' directory")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         if getattr(args, "verbose", False):
             import traceback
 

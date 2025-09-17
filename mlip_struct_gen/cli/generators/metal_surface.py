@@ -8,6 +8,8 @@ from ...generate_structure.metal_surface import MetalSurfaceGenerator, MetalSurf
 from ...utils.json_utils import save_parameters_to_json
 from ...utils.logger import MLIPLogger
 
+logger = MLIPLogger()
+
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
     """Add the metal-surface subcommand parser."""
@@ -171,51 +173,40 @@ def validate_args(args: argparse.Namespace) -> None:
     # Check output file
     output_path = Path(args.output)
     if output_path.exists() and not args.force:
-        print(
-            f"Error: Output file '{args.output}' already exists. Use --force to overwrite",
-            file=sys.stderr,
-        )
+        logger.error(f"Output file '{args.output}' already exists. Use --force to overwrite")
         sys.exit(1)
 
     # Validate size
     if len(args.size) != 3:
-        print("Error: --size must have exactly 3 values (nx ny nz)", file=sys.stderr)
+        logger.error("--size must have exactly 3 values (nx ny nz)")
         sys.exit(1)
 
     nx, ny, nz = args.size
     if nx < 1 or ny < 1:
-        print(f"Error: Lateral dimensions (nx={nx}, ny={ny}) must be at least 1", file=sys.stderr)
+        logger.error(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
         sys.exit(1)
 
     if nz < 3:
-        print(f"Error: Number of layers (nz={nz}) must be at least 3", file=sys.stderr)
+        logger.error(f"Number of layers (nz={nz}) must be at least 3")
         sys.exit(1)
 
     # Validate fix_bottom_layers
     if args.fix_bottom_layers < 0:
-        print(
-            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative",
-            file=sys.stderr,
-        )
+        logger.error(f"--fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative")
         sys.exit(1)
 
     if args.fix_bottom_layers >= nz:
-        print(
-            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})",
-            file=sys.stderr,
-        )
+        logger.error(f"--fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})")
         sys.exit(1)
 
     # Validate vacuum
     if args.vacuum < 0:
-        print(f"Error: --vacuum ({args.vacuum}) must be non-negative", file=sys.stderr)
+        logger.error(f"--vacuum ({args.vacuum}) must be non-negative")
         sys.exit(1)
 
     # Validate lattice constant if provided
     if args.lattice_constant is not None and args.lattice_constant <= 0:
-        print(
-            f"Error: --lattice-constant ({args.lattice_constant}) must be positive", file=sys.stderr
-        )
+        logger.error(f"--lattice-constant ({args.lattice_constant}) must be positive")
         sys.exit(1)
 
     # Infer output format from extension if not specified
@@ -231,10 +222,7 @@ def validate_args(args: argparse.Namespace) -> None:
             # Default to xyz
             args.output_format = "xyz"
             if args.log:
-                print(
-                    f"Warning: Could not infer format from '{suffix}', using XYZ format",
-                    file=sys.stderr,
-                )
+                logger.warning(f"Could not infer format from '{suffix}', using XYZ format")
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -252,22 +240,22 @@ def handle_command(args: argparse.Namespace) -> int:
 
     # Dry run
     if args.dry_run:
-        print("Dry run - would generate metal surface with:")
-        print(f"  Metal: {args.metal}")
-        print(f"  Size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
-        print(f"  Vacuum: {args.vacuum} Å")
+        logger.info("Dry run - would generate metal surface with:")
+        logger.info(f"  Metal: {args.metal}")
+        logger.info(f"  Size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
+        logger.info(f"  Vacuum: {args.vacuum} Å")
         if args.lattice_constant:
-            print(f"  Lattice constant: {args.lattice_constant} Å")
+            logger.info(f"  Lattice constant: {args.lattice_constant} Å")
         if args.fix_bottom_layers > 0:
-            print(f"  Fixed bottom layers: {args.fix_bottom_layers}")
-        print(f"  Orthogonal cell: {args.orthogonalize}")
-        print(f"  Output: {args.output}")
-        print(f"  Format: {args.output_format}")
+            logger.info(f"  Fixed bottom layers: {args.fix_bottom_layers}")
+        logger.info(f"  Orthogonal cell: {args.orthogonalize}")
+        logger.info(f"  Output: {args.output}")
+        logger.info(f"  Format: {args.output_format}")
         return 0
 
     try:
-        # Create logger if requested
-        logger = MLIPLogger() if args.log else None
+        # Use logger if requested
+        param_logger = logger if args.log else None
 
         # Create parameters
         params = MetalSurfaceParameters(
@@ -280,7 +268,7 @@ def handle_command(args: argparse.Namespace) -> int:
             orthogonalize=args.orthogonalize,
             output_format=args.output_format,
             log=args.log,
-            logger=logger,
+            logger=param_logger,
         )
 
         # Save input parameters if requested
@@ -292,24 +280,24 @@ def handle_command(args: argparse.Namespace) -> int:
 
         # Generate surface
         if not getattr(args, "quiet", False):
-            print(f"Generating {args.metal}(111) surface...")
+            logger.info(f"Generating {args.metal}(111) surface...")
 
         output_file = generator.generate()
 
         if not getattr(args, "quiet", False):
-            print(f"Successfully generated: {output_file}")
+            logger.info(f"Successfully generated: {output_file}")
 
-            # Print summary
-            print(f"  Metal: {args.metal}")
-            print(f"  Size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
-            print(f"  Vacuum: {args.vacuum} Å")
+            # Log summary
+            logger.info(f"  Metal: {args.metal}")
+            logger.info(f"  Size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
+            logger.info(f"  Vacuum: {args.vacuum} Å")
             if args.fix_bottom_layers > 0:
-                print(f"  Fixed bottom layers: {args.fix_bottom_layers}")
+                logger.info(f"  Fixed bottom layers: {args.fix_bottom_layers}")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         if getattr(args, "verbose", False):
             import traceback
 

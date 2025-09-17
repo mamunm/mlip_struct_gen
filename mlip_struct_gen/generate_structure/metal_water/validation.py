@@ -210,7 +210,7 @@ def validate_parameters(params: MetalWaterParameters) -> None:
     else:
         # Check if file extension is recognizable
         suffix = output_path.suffix.lower()
-        valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data"}
+        valid_extensions = {".xyz", ".vasp", ".poscar", ".lammps", ".data", ".lmp"}
         if suffix and suffix not in valid_extensions and output_path.name.upper() != "POSCAR":
             print(
                 f"Warning: Unrecognized file extension '{suffix}'. Will use LAMMPS format by default."

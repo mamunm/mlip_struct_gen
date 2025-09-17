@@ -8,52 +8,37 @@ from ...generate_structure.metal_water import MetalWaterGenerator, MetalWaterPar
 from ...utils.json_utils import save_parameters_to_json
 from ...utils.logger import MLIPLogger
 
+logger = MLIPLogger()
+
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
     """Add the metal-water subcommand parser."""
     parser = subparsers.add_parser(
         "metal-water",
-        help="Generate FCC(111) metal surfaces with water layers",
+        help="Generate metal-water interface structures",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Generate FCC(111) metal surfaces with water layers using ASE and PACKMOL",
+        description="Generate metal-water interface structures with ASE and Packmol",
         epilog="""
-Metal-Water Interface Generation:
-  Creates FCC(111) metal surfaces with water molecules above them,
-  suitable for metal-water interface MD simulations.
-
-Supported Metals:
-  Al, Au, Ag, Cu, Ni, Pd, Pt, Pb, Rh, Ir, Ca, Sr, Yb
-
-Water Models:
-  - SPC/E: Extended Simple Point Charge model (default)
-  - TIP3P: Three-site transferable intermolecular potential
-  - TIP4P: Four-site transferable intermolecular potential
-
-Output Formats:
-  Automatically detected from file extension:
-    - .xyz: XYZ coordinate file
-    - .vasp, .poscar, POSCAR: VASP POSCAR format
-    - .lammps, .data: LAMMPS data file (includes water topology)
-
 Examples:
-  1. Basic Pt-water interface:
-     mlip-struct-gen generate metal-water --metal Pt --size 4 4 4 \\
-       --n-water 100 --output pt_water.data
+  1. Basic metal-water interface:
+     mlip-struct-gen generate metal-water --metal Pt --size 4 4 6 --n-water 500 --output interface.data
 
-  2. Gold-water with custom parameters:
-     mlip-struct-gen generate metal-water --metal Au --size 5 5 6 \\
-       --n-water 200 --density 0.997 --gap 3.5 --vacuum 10 \\
-       --fix-bottom-layers 2 --output au_water.vasp
+  2. With custom density and gap:
+     mlip-struct-gen generate metal-water --metal Au --size 5 5 8 --n-water 600 \\
+         --density 1.1 --gap 3.0 --output interface.xyz
 
-  3. Large copper-water system for MD:
-     mlip-struct-gen generate metal-water --metal Cu --size 10 10 8 \\
-       --n-water 500 --water-model TIP3P --lattice-constant 3.615 \\
-       --fix-bottom-layers 3 --output cu_water_large.lammps
+  3. Fixed bottom layers for dynamics:
+     mlip-struct-gen generate metal-water --metal Cu --size 4 4 6 --n-water 500 \\
+         --fix-bottom-layers 2 --output interface.lammps
 
-  4. Aluminum-water with specific density:
-     mlip-struct-gen generate metal-water --metal Al --size 6 6 5 \\
-       --n-water 300 --density 1.05 --gap 4.0 \\
-       --output al_water_interface.xyz
+  4. Custom lattice constant:
+     mlip-struct-gen generate metal-water --metal Ag --size 4 4 6 --n-water 500 \\
+         --lattice-constant 4.085 --output interface.data
+
+Output formats:
+  - .data, .lammps: LAMMPS data file with topology
+  - .xyz: XYZ format (no topology information)
+  - .poscar, POSCAR: VASP POSCAR format
         """,
     )
 
@@ -63,106 +48,98 @@ Examples:
         "-o",
         type=str,
         required=True,
-        help="Output file path (e.g., metal_water.xyz, metal_water.data, POSCAR)",
+        help="Output file path",
     )
 
-    # Metal parameters
     parser.add_argument(
         "--metal",
         "-m",
         type=str,
-        default="Pt",
-        choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
-        help="Metal element symbol (default: Pt)",
+        required=True,
+        choices=["Al", "Cu", "Ni", "Pd", "Ag", "Pt", "Au"],
+        help="Metal element for the surface",
     )
 
     parser.add_argument(
         "--size",
+        "-s",
         type=int,
         nargs=3,
-        default=[4, 4, 4],
+        required=True,
         metavar=("NX", "NY", "NZ"),
-        help="Metal surface size as nx ny nz (default: 4 4 4)",
+        help="Surface size: nx ny nz (unit cells in x, y, and layers in z)",
     )
 
-    # Water parameters
     parser.add_argument(
         "--n-water",
         "-n",
         type=int,
         required=True,
-        metavar="N",
-        help="Number of water molecules (required)",
+        help="Number of water molecules to add",
+    )
+
+    # Optional arguments
+    parser.add_argument(
+        "--water-model",
+        type=str,
+        default="SPC/E",
+        choices=["SPC/E", "TIP3P", "TIP4P"],
+        help="Water model (default: SPC/E)",
     )
 
     parser.add_argument(
         "--density",
         "-d",
         type=float,
-        default=1.0,
-        metavar="RHO",
-        help="Water density in g/cm^3 (default: 1.0)",
+        default=0.997,
+        help="Water density in g/cm^3 (default: 0.997)",
     )
 
-    parser.add_argument(
-        "--water-model",
-        "-w",
-        type=str,
-        choices=["SPC/E", "TIP3P", "TIP4P"],
-        default="SPC/E",
-        help="Water model (default: SPC/E)",
-    )
-
-    # Interface parameters
     parser.add_argument(
         "--gap",
         "-g",
         type=float,
-        default=0.0,
-        metavar="GAP",
-        help="Gap between metal surface and water in Angstroms (default: 3.0)",
+        default=2.5,
+        help="Gap between metal surface and water in Angstroms (default: 2.5)",
     )
 
     parser.add_argument(
         "--vacuum",
         "-v",
         type=float,
-        default=0.0,
-        metavar="VACUUM",
-        help="Vacuum space above water in Angstroms (default: 0.0)",
+        default=20.0,
+        help="Vacuum space above water in Angstroms (default: 20.0)",
     )
 
-    # Optional parameters
     parser.add_argument(
         "--lattice-constant",
         "-a",
         type=float,
-        metavar="A",
-        help="Custom lattice constant in Angstroms (uses default if not specified)",
+        default=None,
+        help="Metal lattice constant in Angstroms (default: element-specific)",
     )
 
     parser.add_argument(
         "--fix-bottom-layers",
         type=int,
         default=0,
-        metavar="N",
         help="Number of bottom metal layers to fix (default: 0)",
     )
 
-    # PACKMOL parameters
     parser.add_argument(
-        "--packmol-executable",
+        "--output-format",
+        "-f",
         type=str,
-        default="packmol",
-        help="Path to packmol executable (default: packmol)",
+        choices=["xyz", "lammps", "poscar"],
+        help="Output file format (inferred from extension if not specified)",
     )
 
+    # Packmol parameters
     parser.add_argument(
-        "--packmol-tolerance",
+        "--tolerance",
         "-t",
         type=float,
         default=2.0,
-        metavar="TOL",
         help="Packmol tolerance in Angstroms (default: 2.0)",
     )
 
@@ -170,16 +147,14 @@ Examples:
         "--seed",
         type=int,
         default=12345,
-        help="Random seed for reproducibility (default: 12345)",
+        help="Random seed for Packmol (default: 12345)",
     )
 
-    # Output format
     parser.add_argument(
-        "--output-format",
-        "-f",
+        "--packmol-executable",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data"],
-        help="Output file format. If not specified, inferred from extension",
+        default="packmol",
+        help="Path to packmol executable (default: packmol)",
     )
 
     # Options
@@ -188,6 +163,12 @@ Examples:
         "-l",
         action="store_true",
         help="Enable detailed logging",
+    )
+
+    parser.add_argument(
+        "--save-artifacts",
+        action="store_true",
+        help="Save intermediate files in 'artifacts' directory",
     )
 
     parser.add_argument(
@@ -202,190 +183,187 @@ Examples:
         help="Overwrite output file if it exists",
     )
 
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to input_params.json",
+    )
+
+
+def infer_output_format(output_path: Path) -> str:
+    """Infer output format from file extension."""
+    suffix = output_path.suffix.lower()
+    name = output_path.name.lower()
+
+    if suffix in [".data", ".lammps", ".lmp"]:
+        return "lammps"
+    elif suffix == ".xyz":
+        return "xyz"
+    elif suffix == ".poscar" or name == "poscar":
+        return "poscar"
+    else:
+        # Default to LAMMPS format
+        return "lammps"
+
 
 def validate_args(args: argparse.Namespace) -> None:
-    """
-    Validate command line arguments.
-
-    Args:
-        args: Parsed arguments
-
-    Raises:
-        SystemExit: If validation fails
-    """
+    """Validate command line arguments."""
     # Check output file
     output_path = Path(args.output)
     if output_path.exists() and not args.force:
-        print(
-            f"Error: Output file '{args.output}' already exists. Use --force to overwrite",
-            file=sys.stderr,
-        )
+        logger.error(f"Output file '{args.output}' already exists. Use --force to overwrite")
         sys.exit(1)
 
-    # Validate size
+    # Check size parameters
     if len(args.size) != 3:
-        print("Error: --size must have exactly 3 values (nx ny nz)", file=sys.stderr)
+        logger.error("--size must have exactly 3 values (nx ny nz)")
         sys.exit(1)
 
     nx, ny, nz = args.size
     if nx < 1 or ny < 1:
-        print(f"Error: Lateral dimensions (nx={nx}, ny={ny}) must be at least 1", file=sys.stderr)
+        logger.error(f"Lateral dimensions (nx={nx}, ny={ny}) must be at least 1")
         sys.exit(1)
 
     if nz < 3:
-        print(f"Error: Number of layers (nz={nz}) must be at least 3", file=sys.stderr)
+        logger.error(f"Number of layers (nz={nz}) must be at least 3")
         sys.exit(1)
 
-    # Validate water parameters
+    # Check water molecules
     if args.n_water < 1:
-        print(f"Error: --n-water ({args.n_water}) must be at least 1", file=sys.stderr)
+        logger.error(f"--n-water ({args.n_water}) must be at least 1")
         sys.exit(1)
 
     if args.density <= 0:
-        print(f"Error: --density ({args.density}) must be positive", file=sys.stderr)
+        logger.error(f"--density ({args.density}) must be positive")
         sys.exit(1)
 
-    # Validate fix_bottom_layers
-    if args.fix_bottom_layers < 0:
-        print(
-            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be non-negative",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
+    # Check fix layers
     if args.fix_bottom_layers >= nz:
-        print(
-            f"Error: --fix-bottom-layers ({args.fix_bottom_layers}) must be less than nz ({nz})",
-            file=sys.stderr,
+        logger.error(
+            f"--fix-bottom-layers ({args.fix_bottom_layers}) must be less than total layers ({nz})"
         )
         sys.exit(1)
 
-    # Validate gap and vacuum
+    # Check lattice constant
+    if args.lattice_constant is not None and args.lattice_constant <= 0:
+        logger.error(f"--lattice-constant ({args.lattice_constant}) must be positive")
+        sys.exit(1)
+
+    # Check gap and vacuum
     if args.gap < 0:
-        print(f"Error: --gap ({args.gap}) must be non-negative", file=sys.stderr)
+        logger.error(f"--gap ({args.gap}) must be non-negative")
         sys.exit(1)
 
     if args.vacuum < 0:
-        print(f"Error: --vacuum ({args.vacuum}) must be non-negative", file=sys.stderr)
+        logger.error(f"--vacuum ({args.vacuum}) must be non-negative")
         sys.exit(1)
 
-    # Validate lattice constant if provided
-    if args.lattice_constant is not None and args.lattice_constant <= 0:
-        print(
-            f"Error: --lattice-constant ({args.lattice_constant}) must be positive", file=sys.stderr
-        )
-        sys.exit(1)
-
-    # Validate PACKMOL tolerance
-    if args.packmol_tolerance <= 0:
-        print(
-            f"Error: --packmol-tolerance ({args.packmol_tolerance}) must be positive",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    # Infer output format from extension if not specified
+    # Infer output format
     if args.output_format is None:
-        suffix = output_path.suffix.lower()
-        if suffix == ".xyz":
-            args.output_format = "xyz"
-        elif suffix in [".vasp", ".poscar"] or output_path.name.upper() == "POSCAR":
-            args.output_format = "poscar"
-        elif suffix in [".lammps", ".data"]:
-            args.output_format = "lammps"
-        else:
-            # Default to lammps for metal-water
-            args.output_format = "lammps"
-            if args.log:
-                print(
-                    f"Warning: Could not infer format from '{suffix}', using LAMMPS format",
-                    file=sys.stderr,
-                )
+        args.output_format = infer_output_format(output_path)
 
 
 def handle_command(args: argparse.Namespace) -> int:
-    """
-    Handle the metal-water generation command.
-
-    Args:
-        args: Parsed command line arguments
-
-    Returns:
-        Exit code (0 for success, non-zero for failure)
-    """
+    """Handle the metal-water generation command."""
     # Validate arguments
     validate_args(args)
 
+    # Check if metal is supported
+    supported_metals = ["Al", "Cu", "Ni", "Pd", "Ag", "Pt", "Au"]
+    if args.metal not in supported_metals:
+        logger.error(f"Unknown metal '{args.metal}'. Supported: Al, Cu, Ni, Pd, Ag, Pt, Au")
+        sys.exit(1)
+
+    # Get default lattice constants
+    default_lattice_constants = {
+        "Al": 4.046,
+        "Cu": 3.615,
+        "Ni": 3.524,
+        "Pd": 3.891,
+        "Ag": 4.085,
+        "Pt": 3.924,
+        "Au": 4.078,
+    }
+
+    # Warn if custom lattice constant differs significantly from default
+    if args.lattice_constant is not None:
+        default_lc = default_lattice_constants[args.metal]
+        if abs(args.lattice_constant - default_lc) > 0.1:
+            if not args.dry_run:
+                logger.warning(
+                    f"Specified lattice constant {args.lattice_constant} Å differs from "
+                    f"default {default_lc} Å for {args.metal}"
+                )
+
     # Dry run
     if args.dry_run:
-        print("Dry run - would generate metal-water interface with:")
-        print(f"  Metal: {args.metal}")
-        print(f"  Metal size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
-        print(f"  Water molecules: {args.n_water}")
-        print(f"  Water model: {args.water_model}")
-        print(f"  Water density: {args.density} g/cm^3")
-        print(f"  Gap above metal: {args.gap} Angstroms")
-        print(f"  Vacuum above water: {args.vacuum} Angstroms")
+        logger.info("Dry run - would generate metal-water interface with:")
+        logger.info(f"  Metal: {args.metal}")
+        logger.info(f"  Metal size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
+        logger.info(f"  Water molecules: {args.n_water}")
+        logger.info(f"  Water model: {args.water_model}")
+        logger.info(f"  Water density: {args.density} g/cm^3")
+        logger.info(f"  Gap above metal: {args.gap} Angstroms")
+        logger.info(f"  Vacuum above water: {args.vacuum} Angstroms")
         if args.lattice_constant:
-            print(f"  Lattice constant: {args.lattice_constant} Angstroms")
+            logger.info(f"  Lattice constant: {args.lattice_constant} Angstroms")
         if args.fix_bottom_layers > 0:
-            print(f"  Fixed bottom layers: {args.fix_bottom_layers}")
-        print(f"  Output: {args.output}")
-        print(f"  Format: {args.output_format}")
+            logger.info(f"  Fixed bottom layers: {args.fix_bottom_layers}")
+        logger.info(f"  Output: {args.output}")
+        logger.info(f"  Format: {args.output_format}")
         return 0
 
     try:
         # Create logger if requested
-        logger = MLIPLogger() if args.log else None
+        param_logger = logger if args.log else None
 
         # Create parameters
         params = MetalWaterParameters(
-            metal=args.metal,
-            size=tuple(args.size),
-            n_water=args.n_water,
             output_file=args.output,
+            metal=args.metal,
+            size=tuple(args.size),  # Pass as tuple (nx, ny, nz)
+            n_water=args.n_water,
+            water_model=args.water_model,
             density=args.density,
             gap_above_metal=args.gap,
             vacuum_above_water=args.vacuum,
-            water_model=args.water_model,
             lattice_constant=args.lattice_constant,
             fix_bottom_layers=args.fix_bottom_layers,
-            packmol_executable=args.packmol_executable,
-            packmol_tolerance=args.packmol_tolerance,
+            packmol_tolerance=args.tolerance,  # Changed from tolerance to packmol_tolerance
             seed=args.seed,
+            packmol_executable=args.packmol_executable,
             output_format=args.output_format,
             log=args.log,
-            logger=logger,
+            logger=param_logger,
         )
 
         # Save input parameters if requested
-        if getattr(args, "save_input", False):
+        if args.save_input:
             save_parameters_to_json(params)
 
-        # Create generator
+        # Create and run generator
         generator = MetalWaterGenerator(params)
 
-        # Generate interface
         if not getattr(args, "quiet", False):
-            print(f"Generating {args.metal}-water interface...")
-            print(f"  Building {args.metal}(111) surface...")
+            logger.info(f"Generating {args.metal}-water interface...")
+            logger.info(f"  Building {args.metal}(111) surface...")
 
-        output_file = generator.generate()
+        output_file = generator.run(save_artifacts=args.save_artifacts)
 
         if not getattr(args, "quiet", False):
-            print(f"Successfully generated: {output_file}")
+            logger.info(f"Successfully generated: {output_file}")
 
             # Print summary
-            print(f"  Metal: {args.metal} ({args.size[0]}x{args.size[1]}x{args.size[2]})")
-            print(f"  Water: {args.n_water} {args.water_model} molecules")
-            print(f"  Density: {args.density} g/cm^3")
+            logger.info(f"  Metal: {args.metal} ({args.size[0]}x{args.size[1]}x{args.size[2]})")
+            logger.info(f"  Water: {args.n_water} {args.water_model} molecules")
+            logger.info(f"  Density: {args.density} g/cm^3")
             if args.fix_bottom_layers > 0:
-                print(f"  Fixed bottom layers: {args.fix_bottom_layers}")
+                logger.info(f"  Fixed bottom layers: {args.fix_bottom_layers}")
 
         return 0
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         if getattr(args, "verbose", False):
             import traceback
 
@@ -397,37 +375,31 @@ def main() -> int:
     """Standalone entry point for metal-water generation."""
     parser = argparse.ArgumentParser(
         prog="mlip-metal-water",
-        description="Generate FCC(111) metal surfaces with water layers",
+        description="Generate metal-water interface structures",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Metal-Water Interface Generation:
-  Creates FCC(111) metal surfaces with water molecules above them.
-
-Supported Metals:
-  Al, Au, Ag, Cu, Ni, Pd, Pt, Pb, Rh, Ir, Ca, Sr, Yb
-
-Water Models: SPC/E (default), TIP3P, TIP4P
-
 Examples:
-  1. Basic Pt-water interface:
-     mlip-metal-water --metal Pt --size 4 4 4 --n-water 100 \\
-       --output pt_water.data
+  1. Basic metal-water interface:
+     mlip-metal-water --metal Pt --size 4 4 6 --n-water 500 --output interface.data
 
-  2. Gold-water with custom parameters:
-     mlip-metal-water --metal Au --size 5 5 6 --n-water 200 \\
-       --density 0.997 --gap 3.5 --vacuum 10 \\
-       --fix-bottom-layers 2 --output au_water.vasp
+  2. With custom density and gap:
+     mlip-metal-water --metal Au --size 5 5 8 --n-water 600 \\
+         --density 1.1 --gap 3.0 --output interface.xyz
 
-  3. Large copper-water system:
-     mlip-metal-water --metal Cu --size 10 10 8 --n-water 500 \\
-       --water-model TIP3P --lattice-constant 3.615 \\
-       --output cu_water_large.lammps
+  3. Fixed bottom layers for dynamics:
+     mlip-metal-water --metal Cu --size 4 4 6 --n-water 500 \\
+         --fix-bottom-layers 2 --output interface.lammps
+
+  4. Custom lattice constant:
+     mlip-metal-water --metal Ag --size 4 4 6 --n-water 500 \\
+         --lattice-constant 4.085 --output interface.data
+
+Output formats:
+  - .data, .lammps: LAMMPS data file with topology
+  - .xyz: XYZ format (no topology information)
+  - .poscar, POSCAR: VASP POSCAR format
         """,
     )
-
-    # Add verbose/quiet flags for standalone
-    parser.add_argument("--verbose", "-V", action="store_true", help="Enable verbose output")
-    parser.add_argument("--quiet", "-q", action="store_true", help="Suppress output")
 
     # Required arguments
     parser.add_argument(
@@ -438,74 +410,72 @@ Examples:
         help="Output file path",
     )
 
-    # Metal parameters
     parser.add_argument(
         "--metal",
         "-m",
         type=str,
-        default="Pt",
-        choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
-        help="Metal element symbol (default: Pt)",
+        required=True,
+        choices=["Al", "Cu", "Ni", "Pd", "Ag", "Pt", "Au"],
+        help="Metal element for the surface",
     )
 
     parser.add_argument(
         "--size",
+        "-s",
         type=int,
         nargs=3,
-        default=[4, 4, 4],
+        required=True,
         metavar=("NX", "NY", "NZ"),
-        help="Metal surface size (default: 4 4 4)",
+        help="Surface size: nx ny nz (unit cells in x, y, and layers in z)",
     )
 
-    # Water parameters
     parser.add_argument(
         "--n-water",
         "-n",
         type=int,
         required=True,
-        help="Number of water molecules",
+        help="Number of water molecules to add",
+    )
+
+    # Optional arguments
+    parser.add_argument(
+        "--water-model",
+        type=str,
+        default="SPC/E",
+        choices=["SPC/E", "TIP3P", "TIP4P"],
+        help="Water model (default: SPC/E)",
     )
 
     parser.add_argument(
         "--density",
         "-d",
         type=float,
-        default=1.0,
-        help="Water density in g/cm^3 (default: 1.0)",
+        default=0.997,
+        help="Water density in g/cm^3 (default: 0.997)",
     )
 
-    parser.add_argument(
-        "--water-model",
-        "-w",
-        type=str,
-        choices=["SPC/E", "TIP3P", "TIP4P"],
-        default="SPC/E",
-        help="Water model (default: SPC/E)",
-    )
-
-    # Interface parameters
     parser.add_argument(
         "--gap",
         "-g",
         type=float,
-        default=0.0,
-        help="Gap between metal and water in Angstroms (default: 0.0)",
+        default=2.5,
+        help="Gap between metal surface and water in Angstroms (default: 2.5)",
     )
 
     parser.add_argument(
         "--vacuum",
         "-v",
         type=float,
-        default=0.0,
-        help="Vacuum above water in Angstroms (default: 0.0)",
+        default=20.0,
+        help="Vacuum space above water in Angstroms (default: 20.0)",
     )
 
-    # Optional parameters
     parser.add_argument(
         "--lattice-constant",
         "-a",
         type=float,
-        help="Custom lattice constant in Angstroms",
+        default=None,
+        help="Metal lattice constant in Angstroms (default: element-specific)",
     )
 
     parser.add_argument(
@@ -515,16 +485,17 @@ Examples:
         help="Number of bottom metal layers to fix (default: 0)",
     )
 
-    # PACKMOL parameters
     parser.add_argument(
-        "--packmol-executable",
+        "--output-format",
+        "-f",
         type=str,
-        default="packmol",
-        help="Path to packmol executable",
+        choices=["xyz", "lammps", "poscar"],
+        help="Output file format (inferred from extension if not specified)",
     )
 
+    # Packmol parameters
     parser.add_argument(
-        "--packmol-tolerance",
+        "--tolerance",
         "-t",
         type=float,
         default=2.0,
@@ -535,16 +506,14 @@ Examples:
         "--seed",
         type=int,
         default=12345,
-        help="Random seed (default: 12345)",
+        help="Random seed for Packmol (default: 12345)",
     )
 
-    # Output format
     parser.add_argument(
-        "--output-format",
-        "-f",
+        "--packmol-executable",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data"],
-        help="Output file format",
+        default="packmol",
+        help="Path to packmol executable (default: packmol)",
     )
 
     # Options
@@ -556,15 +525,21 @@ Examples:
     )
 
     parser.add_argument(
+        "--save-artifacts",
+        action="store_true",
+        help="Save intermediate files in 'artifacts' directory",
+    )
+
+    parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be generated",
+        help="Show what would be generated without running",
     )
 
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite existing output file",
+        help="Overwrite output file if it exists",
     )
 
     parser.add_argument(
@@ -572,6 +547,10 @@ Examples:
         action="store_true",
         help="Save input parameters to input_params.json",
     )
+
+    # Add verbose/quiet flags for standalone
+    parser.add_argument("--verbose", "-vv", action="store_true", help="Enable verbose output")
+    parser.add_argument("--quiet", "-q", action="store_true", help="Suppress output")
 
     args = parser.parse_args()
     return handle_command(args)

@@ -12,6 +12,9 @@ from mlip_struct_gen.generate_structure.metal_salt_water.input_parameters import
 )
 from mlip_struct_gen.generate_structure.metal_salt_water.validation import validate_parameters
 from mlip_struct_gen.utils.json_utils import save_parameters_to_json
+from mlip_struct_gen.utils.logger import MLIPLogger
+
+logger = MLIPLogger()
 
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -210,7 +213,7 @@ def handle_command(args: argparse.Namespace) -> int:
             validate_parameters(params)
         except (ValueError, RuntimeError) as e:
             error_message = str(e)
-            print(f"Error: {error_message}", file=sys.stderr)
+            logger.error(error_message)
             return 1
 
         # Save input parameters if requested
@@ -218,14 +221,25 @@ def handle_command(args: argparse.Namespace) -> int:
             save_parameters_to_json(params)
 
         # Generate structure
+        logger.info(f"Generating {args.metal}-salt-water interface...")
+        logger.info(f"  Building {args.metal}(111) surface ({args.size[0]}x{args.size[1]}x{args.size[2]})...")
+        logger.info(f"  Adding {args.n_water} {args.water_model} water molecules...")
+        logger.info(f"  Adding {args.n_salt} {args.salt} formula units...")
+
         generator = MetalSaltWaterGenerator(params)
         generator.generate()
 
-        print(f"Successfully generated metal-salt-water interface: {args.output}")
+        logger.info(f"Successfully generated: {args.output}")
+        logger.info(f"  Metal: {args.metal} ({args.size[0]}x{args.size[1]}x{args.size[2]})")
+        logger.info(f"  Salt: {args.salt} ({args.n_salt} formula units)")
+        logger.info(f"  Water: {args.n_water} {args.water_model} molecules")
+        logger.info(f"  Density: {args.density} g/cm³")
+        if args.fix_bottom_layers > 0:
+            logger.info(f"  Fixed bottom layers: {args.fix_bottom_layers}")
         return 0
 
     except Exception as e:
-        print(f"Error generating metal-salt-water interface: {e}", file=sys.stderr)
+        logger.error(f"Error generating metal-salt-water interface: {e}")
         return 1
 
 
