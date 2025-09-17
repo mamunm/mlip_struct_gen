@@ -214,7 +214,6 @@ vasp.err
 *.jpeg
 *.gif
 *.pdf
-*.svg
 *.eps
 
 # Data files
