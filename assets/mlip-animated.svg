@@ -2,9 +2,9 @@
 <svg width="800" height="200" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f2027;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#203a43;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#2c5364;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#004d40;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00695c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00897b;stop-opacity:1" />
     </linearGradient>
     <filter id="glow">
       <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -18,505 +18,80 @@
   <rect width="800" height="200" fill="url(#bgGradient)"/>
 
 
-  <circle r="3.6118387332630046" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.989006207523028" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="20s" repeatCount="indefinite"
-      path="M207.3844021739113,62.18524673822037 Q146.80836470090873,34.20040880948096 607.3844021739113,162.18524673822037 T207.3844021739113,62.18524673822037" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.4267187440972853s" repeatCount="indefinite"/>
+      path="M11.392043734717292,49.32008329303733 Q196.73167788329673,20.235408904258257 411.3920437347173,149.32008329303733 T11.392043734717292,49.32008329303733" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.710519311835569s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.3856934332135245" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="2.984831908892182" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="23s" repeatCount="indefinite"
-      path="M10.24159188568708,47.3739816519908 Q563.8876591486311,196.51824174372442 410.24159188568706,147.3739816519908 T10.24159188568708,47.3739816519908" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.116995395172678s" repeatCount="indefinite"/>
+      path="M164.0452348472748,155.4514993205558 Q296.4960686693437,157.59220846418353 564.0452348472747,55.4514993205558 T164.0452348472748,155.4514993205558" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.259928276828679s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.7101495208857607" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.1884580852135205" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="26s" repeatCount="indefinite"
-      path="M794.695105153428,18.46749189013387 Q563.1618742902804,111.20315087932386 394.6951051534279,118.46749189013387 T794.695105153428,18.46749189013387" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.2685858234769505s" repeatCount="indefinite"/>
+      path="M167.00510347864952,188.12346592998773 Q580.0158327100975,153.2872882593668 567.0051034786495,88.12346592998773 T167.00510347864952,188.12346592998773" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.99742615410787s" repeatCount="indefinite"/>
   </circle>
-  <circle r="4.948069443788977" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="2.8513656821066737" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="29s" repeatCount="indefinite"
-      path="M752.8247164228866,39.203260338655745 Q335.4349402256724,88.7177400962888 352.82471642288647,139.20326033865575 T752.8247164228866,39.203260338655745" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1929440520897647s" repeatCount="indefinite"/>
+      path="M588.4476909820526,103.88323649812727 Q217.68727235963576,190.97088113860886 188.44769098205256,3.8832364981272747 T588.4476909820526,103.88323649812727" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.6206822382937007s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.617785938445642" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="2.137181618924375" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="32s" repeatCount="indefinite"
-      path="M534.7477101703247,103.9906570142786 Q79.35985935691319,96.25834178973915 134.7477101703247,3.990657014278611 T534.7477101703247,103.9906570142786" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.221714018094316s" repeatCount="indefinite"/>
+      path="M792.5880169997981,24.584033321604096 Q63.986748262343966,85.94182031595108 392.5880169997981,124.5840333216041 T792.5880169997981,24.584033321604096" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.521170788259573s" repeatCount="indefinite"/>
   </circle>
-  <circle r="3.4096674697278826" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="3.90041217841019" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="35s" repeatCount="indefinite"
-      path="M788.8479437036832,13.98660883578821 Q665.2562334046302,161.672437790598 388.8479437036831,113.98660883578822 T788.8479437036832,13.98660883578821" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.168157592034338s" repeatCount="indefinite"/>
+      path="M179.2982199696815,14.842760132629165 Q584.3080603721396,6.415186866481837 579.2982199696814,114.84276013262917 T179.2982199696815,14.842760132629165" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.2496704284342135s" repeatCount="indefinite"/>
   </circle>
-  <circle r="3.322653005464138" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="2.274620434418992" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="38s" repeatCount="indefinite"
-      path="M618.0528022066438,189.15968349380574 Q324.8949753148499,30.572875340094075 218.05280220664383,89.15968349380574 T618.0528022066438,189.15968349380574" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.926007917449949s" repeatCount="indefinite"/>
+      path="M596.6645363485188,196.9673343487744 Q154.21782978027102,141.57201308806216 196.66453634851882,96.96733434877439 T596.6645363485188,196.9673343487744" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.019292121839491s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.216953555213693" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.102111493096437" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="41s" repeatCount="indefinite"
-      path="M364.46339377843253,30.90242878533992 Q546.7129228049306,195.80339517747626 764.4633937784325,130.9024287853399 T364.46339377843253,30.90242878533992" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.373053665805647s" repeatCount="indefinite"/>
+      path="M787.8560455909538,176.58308195460333 Q262.9031551760276,127.90988589432159 387.8560455909537,76.58308195460336 T787.8560455909538,176.58308195460333" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.478610823730852s" repeatCount="indefinite"/>
   </circle>
-  <circle r="3.303270754835146" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="2.8860257328535255" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="44s" repeatCount="indefinite"
-      path="M126.37974900391218,140.35616429040775 Q173.19792585453112,101.36372084478799 526.3797490039121,40.35616429040775 T126.37974900391218,140.35616429040775" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1753174370463313s" repeatCount="indefinite"/>
+      path="M105.19512943436959,126.06255891490065 Q644.1909614463642,144.11158068733573 505.1951294343696,26.06255891490065 T105.19512943436959,126.06255891490065" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.165102455242233s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.249734148019693" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="2.533012159296234" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="47s" repeatCount="indefinite"
-      path="M391.4877898986861,103.70192384177227 Q710.5837302942715,168.39101636794192 791.4877898986861,3.7019238417722704 T391.4877898986861,103.70192384177227" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1331789846490583s" repeatCount="indefinite"/>
+      path="M599.3282382765165,171.34799873380663 Q307.4953374256111,163.31293939658548 199.32823827651646,71.34799873380666 T599.3282382765165,171.34799873380663" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.726541980706039s" repeatCount="indefinite"/>
   </circle>
-  <circle r="4.773341037123066" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.68989066643446" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="50s" repeatCount="indefinite"
-      path="M37.084208274512605,171.8196153545373 Q447.479370876305,57.87498542693796 437.0842082745126,71.81961535453729 T37.084208274512605,171.8196153545373" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.306005926856109s" repeatCount="indefinite"/>
+      path="M40.92241626995349,93.60423349714264 Q676.0727247726653,82.59033981003483 440.9224162699535,193.60423349714264 T40.92241626995349,93.60423349714264" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.305484554710655s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.5032674646363056" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.537314694633423" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="53s" repeatCount="indefinite"
-      path="M392.43564023833846,169.47232759425012 Q357.52221321347844,174.7225890773625 792.4356402383385,69.47232759425015 T392.43564023833846,169.47232759425012" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.601115078884067s" repeatCount="indefinite"/>
+      path="M529.9414496993509,175.57533641592556 Q600.7871683413588,52.41573195008853 129.94144969935087,75.57533641592556 T529.9414496993509,175.57533641592556" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.7712197023246317s" repeatCount="indefinite"/>
   </circle>
-  <circle r="4.378623521737063" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.160764006855096" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="56s" repeatCount="indefinite"
-      path="M241.018635140711,111.24401492121086 Q175.98754578011776,41.405171190284705 641.018635140711,11.244014921210862 T241.018635140711,111.24401492121086" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.491504358385454s" repeatCount="indefinite"/>
+      path="M282.81855793577597,91.23310127020552 Q137.46414570744793,74.85854836259212 682.818557935776,191.2331012702055 T282.81855793577597,91.23310127020552" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.0975555109916795s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.7288914711518997" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="3.730934612811852" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="59s" repeatCount="indefinite"
-      path="M676.930009617986,167.72585908599495 Q387.3722977528139,153.5512687259485 276.9300096179859,67.72585908599495 T676.930009617986,167.72585908599495" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.35204245377739s" repeatCount="indefinite"/>
+      path="M617.7935281726255,125.83619955807589 Q165.34837755086622,164.31305210858466 217.79352817262554,25.83619955807589 T617.7935281726255,125.83619955807589" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.423329547588165s" repeatCount="indefinite"/>
   </circle>
-  <circle r="2.712222855214045" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
+  <circle r="4.153099728233215" fill="rgba(168, 234, 200, 0.6)" filter="url(#glow)">
     <animateMotion dur="62s" repeatCount="indefinite"
-      path="M279.0676258012673,94.4787948336469 Q250.5034661577084,12.74325674505552 679.0676258012672,194.4787948336469 T279.0676258012673,94.4787948336469" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.629399673047384s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.004368126612409" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="65s" repeatCount="indefinite"
-      path="M84.14377099160203,8.30504405201199 Q714.6986143370833,45.35479677504293 484.143770991602,108.305044052012 T84.14377099160203,8.30504405201199" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.228462997387076s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.230874181548027" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="68s" repeatCount="indefinite"
-      path="M779.8504631388379,147.74184719378593 Q439.35624795827516,93.29496387389742 379.85046313883777,47.74184719378593 T779.8504631388379,147.74184719378593" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.106908073989424s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.1510540225581227" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="71s" repeatCount="indefinite"
-      path="M430.283531102853,16.235241023504322 Q743.7087622375624,111.08530595798818 30.283531102852976,116.23524102350433 T430.283531102853,16.235241023504322" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.6227196869204965s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.7375251578682436" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="74s" repeatCount="indefinite"
-      path="M704.9901560173705,48.001517429566576 Q464.2373878674042,68.42875598723212 304.9901560173705,148.00151742956658 T704.9901560173705,48.001517429566576" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.095681741047012s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.568279536777154" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="77s" repeatCount="indefinite"
-      path="M245.7703420488532,125.19366730255241 Q210.2988812638742,180.75180427704868 645.7703420488532,25.1936673025524 T245.7703420488532,125.19366730255241" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.949189153879088s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.3331363566645438" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="80s" repeatCount="indefinite"
-      path="M281.44478031487455,134.384676248017 Q332.1495012993583,111.6660741944044 681.4447803148746,34.384676248017 T281.44478031487455,134.384676248017" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.949413803526179s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.4310247082358902" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="83s" repeatCount="indefinite"
-      path="M177.06229352089733,101.62549985566656 Q168.13452342388499,89.15085181048129 577.0622935208974,1.6254998556665612 T177.06229352089733,101.62549985566656" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.906719656423094s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.0062213439067005" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="86s" repeatCount="indefinite"
-      path="M484.43091140551564,172.63506511272158 Q778.5366851059464,119.53602025134403 84.43091140551564,72.63506511272158 T484.43091140551564,172.63506511272158" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.278612318949061s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.166189901569958" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="89s" repeatCount="indefinite"
-      path="M791.3565105914238,91.88344945106877 Q261.7110643874298,188.88478296119513 391.3565105914238,191.88344945106877 T791.3565105914238,91.88344945106877" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.482603817942588s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.325177407515721" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="92s" repeatCount="indefinite"
-      path="M496.3608039263277,17.408694457552752 Q3.8803388334857303,55.58180770504346 96.36080392632766,117.40869445755276 T496.3608039263277,17.408694457552752" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.244682633583732s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.922456632882179" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="95s" repeatCount="indefinite"
-      path="M215.5516617029487,183.85557583722658 Q127.3930969428852,119.52690327716596 615.5516617029486,83.85557583722658 T215.5516617029487,183.85557583722658" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.8802983170293714s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.4190446331006608" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="98s" repeatCount="indefinite"
-      path="M218.6393616080884,119.28110982314945 Q339.62931818836,17.668486630419288 618.6393616080884,19.28110982314945 T218.6393616080884,119.28110982314945" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.2003794643888845s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.378411543712932" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="101s" repeatCount="indefinite"
-      path="M247.60010723665602,15.859282620680887 Q153.80432533014076,48.38412008219966 647.600107236656,115.85928262068089 T247.60010723665602,15.859282620680887" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.789968827523138s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.086640371473786" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="104s" repeatCount="indefinite"
-      path="M86.15296157328534,88.02137739773048 Q72.54508129258292,83.34746589103392 486.1529615732853,188.02137739773048 T86.15296157328534,88.02137739773048" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.3374398561742966s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.416502742187912" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="107s" repeatCount="indefinite"
-      path="M177.27340143341567,63.76468529561829 Q138.21605952252014,55.21517411379118 577.2734014334156,163.76468529561828 T177.27340143341567,63.76468529561829" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.605855858982442s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.960234277766833" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="110s" repeatCount="indefinite"
-      path="M593.7146950991244,47.18675241680559 Q51.52813023476792,83.073013242648 193.71469509912436,147.18675241680558 T593.7146950991244,47.18675241680559" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.42587084757771s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.0135167968499514" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="113s" repeatCount="indefinite"
-      path="M110.9096017653319,140.96778322681112 Q717.7550529968514,1.6811923161595965 510.9096017653319,40.96778322681112 T110.9096017653319,140.96778322681112" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.429178075310683s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.4610118705850694" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="116s" repeatCount="indefinite"
-      path="M781.3448084733151,121.41718440636743 Q703.1425795641603,167.71599066095285 381.34480847331497,21.417184406367426 T781.3448084733151,121.41718440636743" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.018723657157567s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.852390646256901" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="119s" repeatCount="indefinite"
-      path="M526.758858971014,156.51092828167396 Q497.3634525675932,197.09655950032035 126.75885897101398,56.510928281673955 T526.758858971014,156.51092828167396" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.5094640574778513s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.3873835791452493" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="122s" repeatCount="indefinite"
-      path="M730.7082650631945,127.7394756983347 Q742.2848049451292,139.1776351796732 330.70826506319463,27.7394756983347 T730.7082650631945,127.7394756983347" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.950635111003126s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.4488545759719402" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="125s" repeatCount="indefinite"
-      path="M361.103572872169,78.17232509150175 Q416.74612120278357,119.41296795148055 761.103572872169,178.17232509150176 T361.103572872169,78.17232509150175" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.791250698986335s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.617229179451074" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="128s" repeatCount="indefinite"
-      path="M635.9017062216103,147.7793734768802 Q695.3231465514338,86.54034929458558 235.9017062216103,47.77937347688021 T635.9017062216103,147.7793734768802" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.887233437816808s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.1355641400037864" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="131s" repeatCount="indefinite"
-      path="M416.10774727183446,182.07016276259475 Q536.3044458606507,187.36048246390692 16.107747271834455,82.07016276259475 T416.10774727183446,182.07016276259475" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.228967153476996s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.053817639851175" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="134s" repeatCount="indefinite"
-      path="M70.1793526860496,188.90130493380212 Q22.736688648253356,35.07031713808031 470.1793526860496,88.90130493380212 T70.1793526860496,188.90130493380212" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.4530508689086683s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.3935474839221267" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="137s" repeatCount="indefinite"
-      path="M337.5983491015298,142.46849222979233 Q355.9272188631496,152.4915824790837 737.5983491015297,42.46849222979233 T337.5983491015298,142.46849222979233" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.2751466202813564s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.051691263060013" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="140s" repeatCount="indefinite"
-      path="M577.5724717229177,49.255353026912886 Q702.0401003524979,155.97255269325225 177.57247172291773,149.25535302691287 T577.5724717229177,49.255353026912886" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.65584181709247s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.400799077687807" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="143s" repeatCount="indefinite"
-      path="M621.462615573122,106.87662689606532 Q419.2597934950802,5.958421759354793 221.46261557312198,6.876626896065318 T621.462615573122,106.87662689606532" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.919255603235309s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.365114040387816" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="146s" repeatCount="indefinite"
-      path="M375.2396364723604,165.02691340987025 Q786.6439855479678,7.313061441376689 775.2396364723604,65.02691340987025 T375.2396364723604,165.02691340987025" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.498268556906665s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.874903332017501" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="149s" repeatCount="indefinite"
-      path="M432.1058766221191,190.32545930289712 Q191.99754281377128,114.14057209073924 32.105876622119126,90.32545930289712 T432.1058766221191,190.32545930289712" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.096230778119103s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.8231572368927536" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="152s" repeatCount="indefinite"
-      path="M247.05872594861717,83.9660285305723 Q701.8153186369408,87.7097394788334 647.0587259486172,183.96602853057232 T247.05872594861717,83.9660285305723" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.726079296438643s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.3435737810066" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="155s" repeatCount="indefinite"
-      path="M126.35146254639011,38.05446123868467 Q477.99598733204584,105.63959509112992 526.3514625463902,138.05446123868467 T126.35146254639011,38.05446123868467" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.0555604927867694s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.9848534818088384" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="158s" repeatCount="indefinite"
-      path="M112.63005808406109,11.139717695955467 Q505.72887733314786,194.17438192859962 512.6300580840611,111.13971769595547 T112.63005808406109,11.139717695955467" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.9455396238231115s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.443890593242605" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="161s" repeatCount="indefinite"
-      path="M448.48892189162893,80.56384564369552 Q227.48129713469655,88.24819933844117 48.488921891628934,180.56384564369552 T448.48892189162893,80.56384564369552" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.8722208362109676s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.2995526846433587" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="164s" repeatCount="indefinite"
-      path="M390.875875628919,171.89600740476203 Q799.1811636560747,68.66907551783301 790.875875628919,71.89600740476203 T390.875875628919,171.89600740476203" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.08557525526665s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.906774972668896" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="167s" repeatCount="indefinite"
-      path="M635.8604972682617,71.73087262332967 Q442.48598237904775,56.959934487782846 235.86049726826172,171.73087262332967 T635.8604972682617,71.73087262332967" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.236830557815752s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.096384707980203" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="170s" repeatCount="indefinite"
-      path="M796.0884663586156,75.93071777145936 Q508.7593512452072,99.11096713088729 396.08846635861573,175.93071777145934 T796.0884663586156,75.93071777145936" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.782032184335336s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.7504710155281575" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="173s" repeatCount="indefinite"
-      path="M693.5671611525336,24.33856583613727 Q360.1830875605649,169.29964571591475 293.5671611525336,124.33856583613726 T693.5671611525336,24.33856583613727" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.017995396380923s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.8833768808467095" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="176s" repeatCount="indefinite"
-      path="M253.25931812832812,89.684289038884 Q321.311591624197,164.32323966053852 653.2593181283281,189.684289038884 T253.25931812832812,89.684289038884" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.209722562099191s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.499899803782296" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="179s" repeatCount="indefinite"
-      path="M696.2616287532821,45.772770229993284 Q273.2697606074363,179.00104901819552 296.26162875328214,145.77277022999328 T696.2616287532821,45.772770229993284" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.773546652339416s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.4574747070894167" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="182s" repeatCount="indefinite"
-      path="M655.5181721888898,137.70183311898893 Q365.5162762557154,67.30130331771579 255.51817218888982,37.70183311898893 T655.5181721888898,137.70183311898893" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.604589685512078s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.941446680100788" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="185s" repeatCount="indefinite"
-      path="M697.2092569640547,192.76566798739827 Q11.320266443988114,137.19657374335742 297.2092569640547,92.76566798739827 T697.2092569640547,192.76566798739827" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1252300106137714s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.1460298064481336" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="188s" repeatCount="indefinite"
-      path="M525.6530036215162,143.49811846064097 Q416.0904149486897,105.38628285470621 125.65300362151618,43.49811846064097 T525.6530036215162,143.49811846064097" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.769580574019618s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.4599874360246274" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="191s" repeatCount="indefinite"
-      path="M519.6942583535082,153.9704354208611 Q234.31102582194222,141.3976457457999 119.69425835350819,53.970435420861094 T519.6942583535082,153.9704354208611" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.98141742087508s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.9214980939110045" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="194s" repeatCount="indefinite"
-      path="M131.34410874294002,84.39082640708409 Q80.05307354022797,9.853122440923467 531.3441087429401,184.3908264070841 T131.34410874294002,84.39082640708409" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.067395357070307s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.730629228149689" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="197s" repeatCount="indefinite"
-      path="M143.74922441779097,46.35216690473298 Q306.69859874796595,122.53450065499187 543.749224417791,146.352166904733 T143.74922441779097,46.35216690473298" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.961006289342939s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.8550532949139216" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="200s" repeatCount="indefinite"
-      path="M67.65497836115125,23.615890524308355 Q370.8011215351644,24.228813001918702 467.6549783611513,123.61589052430836 T67.65497836115125,23.615890524308355" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.0112229369287746s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.8800703937902457" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="203s" repeatCount="indefinite"
-      path="M508.5102104816499,20.052261451007624 Q232.75111469917763,37.99818714256145 108.51021048164989,120.05226145100762 T508.5102104816499,20.052261451007624" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.552850183194781s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.9339959434115017" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="206s" repeatCount="indefinite"
-      path="M0.1950091023592282,24.67255364130263 Q387.430148424446,93.64656907556743 400.1950091023592,124.67255364130263 T0.1950091023592282,24.67255364130263" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.260314149278711s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.829511494218151" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="209s" repeatCount="indefinite"
-      path="M320.4266213587154,113.57207165759041 Q657.7814120609995,58.91485738304212 720.4266213587155,13.572071657590413 T320.4266213587154,113.57207165759041" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.596372445353811s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.6906316493712072" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="212s" repeatCount="indefinite"
-      path="M746.9299271094068,66.40867528486129 Q280.91238694143374,112.2539507547206 346.9299271094069,166.4086752848613 T746.9299271094068,66.40867528486129" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.314377376468452s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.106002492533708" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="215s" repeatCount="indefinite"
-      path="M359.787555064201,31.051872916720548 Q245.53732015284746,115.8127176175638 759.787555064201,131.05187291672055 T359.787555064201,31.051872916720548" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.4400818077669513s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.1704352516518757" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="218s" repeatCount="indefinite"
-      path="M510.1442027249612,157.7912431419397 Q203.82823248050244,106.832622161834 110.14420272496113,57.79124314193973 T510.1442027249612,157.7912431419397" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.771674673310067s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.6570962832954224" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="221s" repeatCount="indefinite"
-      path="M638.2142878855605,159.25545750513027 Q104.39103064030712,87.61109593526226 238.21428788556045,59.255457505130266 T638.2142878855605,159.25545750513027" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.4156108837970223s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.2793965745512432" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="224s" repeatCount="indefinite"
-      path="M757.9312956205016,140.2236714557432 Q687.0810146608396,32.11268856749885 357.9312956205017,40.22367145574319 T757.9312956205016,140.2236714557432" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.007782684844617s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.3577888843886603" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="227s" repeatCount="indefinite"
-      path="M473.0332382581174,117.77526315707536 Q470.18506510677236,4.567732226133869 73.03323825811742,17.775263157075358 T473.0332382581174,117.77526315707536" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1671234432480233s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.0241600157040076" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="230s" repeatCount="indefinite"
-      path="M779.6960770640515,103.05703299218084 Q658.4180601132173,112.73659091392001 379.69607706405145,3.0570329921808366 T779.6960770640515,103.05703299218084" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.390639887177721s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.1201999400964517" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="233s" repeatCount="indefinite"
-      path="M278.6538029914852,119.38819329673456 Q780.4328307286017,104.51124445359193 678.6538029914852,19.388193296734556 T278.6538029914852,119.38819329673456" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.1156779403882924s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.4979500151378105" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="236s" repeatCount="indefinite"
-      path="M225.00849695186056,48.621019179352075 Q640.1055603717477,15.894027637746388 625.0084969518606,148.62101917935206 T225.00849695186056,48.621019179352075" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.503161453564208s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.609762170572547" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="239s" repeatCount="indefinite"
-      path="M67.68279297847786,85.40689657253087 Q45.95449959634843,139.7213336096827 467.6827929784779,185.40689657253085 T67.68279297847786,85.40689657253087" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.411813148142304s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.402997553007111" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="242s" repeatCount="indefinite"
-      path="M615.2831326614712,55.595873839594816 Q779.6904086627715,189.37056654354365 215.2831326614712,155.59587383959482 T615.2831326614712,55.595873839594816" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.934195038365838s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.82798904820759" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="245s" repeatCount="indefinite"
-      path="M212.76241842816103,72.32911323155207 Q283.9110729033449,145.0976868114706 612.762418428161,172.32911323155207 T212.76241842816103,72.32911323155207" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.124888521256421s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.798870247118985" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="248s" repeatCount="indefinite"
-      path="M308.62361108404156,80.8618399057668 Q390.1628772262222,4.7104110131899635 708.6236110840416,180.8618399057668 T308.62361108404156,80.8618399057668" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.601671628530475s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.749280766594897" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="251s" repeatCount="indefinite"
-      path="M394.8762405110904,162.8056742874234 Q293.15219774644044,36.04750027037553 794.8762405110904,62.80567428742336 T394.8762405110904,162.8056742874234" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.8942022338671576s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.3002070767978147" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="254s" repeatCount="indefinite"
-      path="M119.54766882399035,76.36584888568063 Q272.0849079082618,83.76293911838981 519.5476688239903,176.36584888568063 T119.54766882399035,76.36584888568063" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.421709665900516s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.828871657494552" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="257s" repeatCount="indefinite"
-      path="M593.1392290730782,69.00932422122716 Q519.9680777939773,143.24311360276639 193.13922907307824,169.00932422122716 T593.1392290730782,69.00932422122716" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.745930744569926s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.933667297877222" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="260s" repeatCount="indefinite"
-      path="M450.5349345036443,23.132920821142417 Q441.53017007209365,175.69478031484357 50.53493450364431,123.13292082114242 T450.5349345036443,23.132920821142417" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.1305179569079336s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.050575894966442" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="263s" repeatCount="indefinite"
-      path="M46.948540800496374,6.813198017938665 Q89.7198129016333,78.7844159499442 446.9485408004964,106.81319801793866 T46.948540800496374,6.813198017938665" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.99908388363855s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.1391089104292167" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="266s" repeatCount="indefinite"
-      path="M451.68131972073695,8.758837951534005 Q236.60638949285647,165.77287618096977 51.68131972073695,108.758837951534 T451.68131972073695,8.758837951534005" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.3225683484310475s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.238425849821054" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="269s" repeatCount="indefinite"
-      path="M611.3826410415061,46.760383240310006 Q346.3332726307171,14.233096472777905 211.38264104150608,146.76038324031 T611.3826410415061,46.760383240310006" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.460145300262602s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.4901724059111165" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="272s" repeatCount="indefinite"
-      path="M506.5121349011789,147.50492628102654 Q509.40041982674603,63.6593051835729 106.51213490117891,47.50492628102654 T506.5121349011789,147.50492628102654" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.493050289710598s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.210513667497773" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="275s" repeatCount="indefinite"
-      path="M311.13500040036365,67.89349125286162 Q103.60015006954004,46.756080341467545 711.1350004003637,167.89349125286162 T311.13500040036365,67.89349125286162" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.3427305722177234s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.998272137417643" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="278s" repeatCount="indefinite"
-      path="M470.9451289380941,7.3152487227439735 Q414.7123180749415,21.486656825907204 70.94512893809406,107.31524872274397 T470.9451289380941,7.3152487227439735" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.234858037184031s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.5075898974154844" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="281s" repeatCount="indefinite"
-      path="M113.14124483752227,58.300977454755426 Q219.75276614109615,128.25590339179092 513.1412448375222,158.3009774547554 T113.14124483752227,58.300977454755426" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.992279437820618s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.7188058424165336" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="284s" repeatCount="indefinite"
-      path="M308.5179965051634,41.02845643959595 Q721.1327783453736,167.7428081127957 708.5179965051634,141.02845643959594 T308.5179965051634,41.02845643959595" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.574590200539989s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.938446195383948" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="287s" repeatCount="indefinite"
-      path="M310.2338585484976,148.50797735512265 Q588.9814031318197,130.1003414621132 710.2338585484977,48.50797735512265 T310.2338585484976,148.50797735512265" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.5305500860231547s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.7843574120773154" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="290s" repeatCount="indefinite"
-      path="M447.61656467903185,37.64193672887622 Q159.10528582718433,88.23037165552074 47.61656467903185,137.6419367288762 T447.61656467903185,37.64193672887622" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.81770483653281s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.319384552318403" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="293s" repeatCount="indefinite"
-      path="M279.3956357632239,0.3635971625653657 Q89.63103477584733,7.8131912292031425 679.3956357632239,100.36359716256537 T279.3956357632239,0.3635971625653657" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.3257777086608495s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="3.0492941557463182" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="296s" repeatCount="indefinite"
-      path="M526.1385592589256,156.38695643328637 Q641.417449322169,132.6661300975565 126.13855925892562,56.3869564332864 T526.1385592589256,156.38695643328637" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.4373029055181448s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.033014680433048" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="299s" repeatCount="indefinite"
-      path="M636.9517468546002,23.44713549686986 Q347.0022146177585,101.47463912761705 236.95174685460006,123.44713549686986 T636.9517468546002,23.44713549686986" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.121011944096505s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.723219469043105" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="302s" repeatCount="indefinite"
-      path="M15.217892041844621,173.183621961553 Q491.1990239068762,33.10882376500728 415.2178920418446,73.183621961553 T15.217892041844621,173.183621961553" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.583930490482075s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.576392585995275" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="305s" repeatCount="indefinite"
-      path="M600.7432404148225,23.362666057405264 Q192.71014834195225,44.53590643437102 200.74324041482248,123.36266605740526 T600.7432404148225,23.362666057405264" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.973844520797621s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.2182465764451327" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="308s" repeatCount="indefinite"
-      path="M22.157178030449785,163.10563625476198 Q11.98556663412118,162.51957858517244 422.1571780304498,63.105636254761976 T22.157178030449785,163.10563625476198" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.5477799380259842s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.844560673276915" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="311s" repeatCount="indefinite"
-      path="M648.0116492630887,104.74285398433344 Q531.1824082890785,182.8049188574859 248.01164926308866,4.742853984333436 T648.0116492630887,104.74285398433344" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.2681773624660844s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2.4046747668855497" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="314s" repeatCount="indefinite"
-      path="M285.665759746637,111.22511715965393 Q446.2784071938791,57.83667327896171 685.6657597466369,11.225117159653934 T285.665759746637,111.22511715965393" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.976776653724944s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="4.6961217695797375" fill="rgba(168, 216, 234, 0.6)" filter="url(#glow)">
-    <animateMotion dur="317s" repeatCount="indefinite"
-      path="M449.07401048131555,144.6339616696194 Q451.96563289747644,118.17009401558668 49.074010481315554,44.633961669619396 T449.07401048131555,144.6339616696194" />
-    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4.899037350854478s" repeatCount="indefinite"/>
+      path="M288.66168255690354,172.7073869024247 Q486.5182399084956,176.47157426776107 688.6616825569035,72.70738690242467 T288.66168255690354,172.7073869024247" />
+    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.9526760612964367s" repeatCount="indefinite"/>
   </circle>
 
   <text x="400" y="85" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#ffffff" text-anchor="middle">
@@ -524,7 +99,7 @@
     <animate attributeName="opacity" values="0.95;1;0.95" dur="3s" repeatCount="indefinite"/>
   </text>
 
-  <text x="400" y="115" font-family="Arial, sans-serif" font-size="16" font-weight="300" fill="#a8d8ea" text-anchor="middle">
+  <text x="400" y="115" font-family="Arial, sans-serif" font-size="16" font-weight="300" fill="#a8eac8" text-anchor="middle">
     Machine Learning Interatomic Potential Structure Generator
   </text>
 </svg>
