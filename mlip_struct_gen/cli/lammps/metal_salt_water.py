@@ -1,10 +1,10 @@
-"""CLI for generating LAMMPS input for metal surface systems."""
+"""CLI for generating LAMMPS input for metal-salt-water interface systems."""
 
 import argparse
 
-from mlip_struct_gen.generate_lammps_input.metal_surface import (
-    MetalSurfaceLAMMPSGenerator,
-    MetalSurfaceLAMMPSParameters,
+from mlip_struct_gen.generate_lammps_input.metal_salt_water import (
+    MetalSaltWaterLAMMPSGenerator,
+    MetalSaltWaterLAMMPSParameters,
 )
 from mlip_struct_gen.utils.logger import MLIPLogger
 
@@ -12,22 +12,22 @@ logger = MLIPLogger()
 
 
 def setup_parser(subparsers):
-    """Set up the parser for metal surface LAMMPS input generation.
+    """Set up the parser for metal-salt-water interface LAMMPS input generation.
 
     Args:
         subparsers: The subparsers object from argparse
     """
     parser = subparsers.add_parser(
-        "mlip-metal-surface",
-        help="Generate LAMMPS input for metal surface simulations",
-        description="Generate LAMMPS input files for metal surface simulations with LJ potentials",
+        "mlip-metal-salt-water",
+        help="Generate LAMMPS input for metal-salt-water interface simulations",
+        description="Generate LAMMPS input files for metal-salt-water interface simulations with LJ potentials",
     )
 
     # Required arguments
     parser.add_argument(
         "data_file",
         type=str,
-        help="Path to the LAMMPS data file containing metal surface structure",
+        help="Path to the LAMMPS data file containing metal-salt-water interface structure",
     )
 
     parser.add_argument(
@@ -39,6 +39,15 @@ def setup_parser(subparsers):
         help="Metal type for the surface",
     )
 
+    parser.add_argument(
+        "--salt",
+        "-s",
+        type=str,
+        required=True,
+        choices=["NaCl", "KCl", "LiCl", "NaF", "KF", "LiF", "NaBr", "KBr", "LiBr"],
+        help="Salt type (e.g., NaCl, KCl)",
+    )
+
     # Optional arguments
     parser.add_argument(
         "--output",
@@ -46,6 +55,14 @@ def setup_parser(subparsers):
         type=str,
         default="input.lammps",
         help="Output LAMMPS input filename (default: input.lammps)",
+    )
+
+    parser.add_argument(
+        "--water-model",
+        type=str,
+        default="SPC/E",
+        choices=["SPC/E", "TIP3P"],
+        help="Water model (default: SPC/E)",
     )
 
     parser.add_argument(
@@ -97,8 +114,8 @@ def setup_parser(subparsers):
     parser.add_argument(
         "--fix-layers",
         type=int,
-        default=0,
-        help="Number of bottom layers to fix (default: 0)",
+        default=2,
+        help="Number of bottom metal layers to fix (default: 2)",
     )
 
     parser.add_argument(
@@ -122,26 +139,21 @@ def setup_parser(subparsers):
         help="Compute per-atom stress for MLIP training (default: True)",
     )
 
-    parser.add_argument(
-        "--compute-centro",
-        action="store_true",
-        default=True,
-        help="Compute centrosymmetry parameter (default: True)",
-    )
-
-    parser.set_defaults(func=run_metal_surface)
+    parser.set_defaults(func=run_metal_salt_water)
 
 
-def run_metal_surface(args):
-    """Run the metal surface LAMMPS input generation.
+def run_metal_salt_water(args):
+    """Run the metal-salt-water interface LAMMPS input generation.
 
     Args:
         args: Command line arguments
     """
     # Create parameters
-    parameters = MetalSurfaceLAMMPSParameters(
+    parameters = MetalSaltWaterLAMMPSParameters(
         data_file=args.data_file,
         metal_type=args.metal,
+        salt_type=args.salt,
+        water_model=args.water_model,
         ensemble=args.ensemble,
         temperatures=args.temperature,
         pressure=args.pressure,
@@ -152,18 +164,19 @@ def run_metal_surface(args):
         lj_cutoff=args.lj_cutoff,
         timestep=args.timestep,
         compute_stress=args.compute_stress,
-        compute_centro=args.compute_centro,
         output_file=args.output,
     )
 
     # Create generator
-    generator = MetalSurfaceLAMMPSGenerator(parameters)
+    generator = MetalSaltWaterLAMMPSGenerator(parameters)
 
     # Generate LAMMPS input file
     generator.generate()
 
     logger.info(f"LAMMPS input file written to: {args.output}")
     logger.info(f"Metal: {args.metal}")
+    logger.info(f"Salt: {args.salt}")
+    logger.info(f"Water model: {args.water_model}")
     logger.info(f"Ensemble: {args.ensemble}")
     logger.info(f"Temperature(s): {args.temperature} K")
     if args.ensemble == "NPT":
@@ -176,17 +189,17 @@ def run_metal_surface(args):
 
 
 def main():
-    """Main entry point for the mlip-lammps-metal-surface command."""
+    """Main entry point for the mlip-lammps-metal-salt-water command."""
     parser = argparse.ArgumentParser(
-        prog="mlip-lammps-metal-surface",
-        description="Generate LAMMPS input files for metal surface simulations with LJ potentials",
+        prog="mlip-lammps-metal-salt-water",
+        description="Generate LAMMPS input files for metal-salt-water interface simulations with LJ potentials",
     )
 
     # Required arguments
     parser.add_argument(
         "data_file",
         type=str,
-        help="Path to the LAMMPS data file containing metal surface structure",
+        help="Path to the LAMMPS data file containing metal-salt-water interface structure",
     )
 
     parser.add_argument(
@@ -198,6 +211,15 @@ def main():
         help="Metal type for the surface",
     )
 
+    parser.add_argument(
+        "--salt",
+        "-s",
+        type=str,
+        required=True,
+        choices=["NaCl", "KCl", "LiCl", "NaF", "KF", "LiF", "NaBr", "KBr", "LiBr"],
+        help="Salt type (e.g., NaCl, KCl)",
+    )
+
     # Optional arguments
     parser.add_argument(
         "--output",
@@ -205,6 +227,14 @@ def main():
         type=str,
         default="input.lammps",
         help="Output LAMMPS input filename (default: input.lammps)",
+    )
+
+    parser.add_argument(
+        "--water-model",
+        type=str,
+        default="SPC/E",
+        choices=["SPC/E", "TIP3P"],
+        help="Water model (default: SPC/E)",
     )
 
     parser.add_argument(
@@ -256,8 +286,8 @@ def main():
     parser.add_argument(
         "--fix-layers",
         type=int,
-        default=0,
-        help="Number of bottom layers to fix (default: 0)",
+        default=2,
+        help="Number of bottom metal layers to fix (default: 2)",
     )
 
     parser.add_argument(
@@ -281,15 +311,8 @@ def main():
         help="Compute per-atom stress for MLIP training (default: True)",
     )
 
-    parser.add_argument(
-        "--compute-centro",
-        action="store_true",
-        default=True,
-        help="Compute centrosymmetry parameter (default: True)",
-    )
-
     args = parser.parse_args()
-    run_metal_surface(args)
+    run_metal_salt_water(args)
 
 
 if __name__ == "__main__":

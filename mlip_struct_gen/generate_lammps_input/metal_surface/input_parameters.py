@@ -30,7 +30,7 @@ class MetalSurfaceLAMMPSParameters:
     lj_cutoff: float = 10.0  # LJ cutoff in Angstrom
 
     # Surface constraints
-    fix_bottom_layers: int = 2  # Number of bottom layers to fix
+    fix_bottom_layers: int = 0  # Number of bottom layers to fix
 
     # Thermostat/barostat settings
     thermostat_damping: float = 100.0  # fs

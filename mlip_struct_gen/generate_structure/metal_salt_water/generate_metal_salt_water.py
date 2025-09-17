@@ -660,12 +660,12 @@ H   -0.8164    0.0000    0.5773
             # Masses
             f.write("Masses\n\n")
             if self.parameters.n_salt > 0:
-                # With ions: 1=Metal, 2=Cation, 3=Anion, 4=O, 5=H
+                # With ions: 1=Metal, 2=O, 3=H, 4=Cation, 5=Anion
                 f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
-                f.write(f"2 {cation_params['mass']:.4f}  # {self.salt_info['cation']}\n")
-                f.write(f"3 {anion_params['mass']:.4f}  # {self.salt_info['anion']}\n")
-                f.write("4 15.9994  # O\n")
-                f.write("5 1.00794  # H\n\n")
+                f.write("2 15.9994  # O\n")
+                f.write("3 1.00794  # H\n")
+                f.write(f"4 {cation_params['mass']:.4f}  # {self.salt_info['cation']}\n")
+                f.write(f"5 {anion_params['mass']:.4f}  # {self.salt_info['anion']}\n\n")
             else:
                 # Without ions: 1=Metal, 2=O, 3=H
                 f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
@@ -689,29 +689,8 @@ H   -0.8164    0.0000    0.5773
                     )
                     atom_id += 1
 
-            # Write ions if present (each ion gets its own molecule ID)
-            if self.parameters.n_salt > 0:
-                # Cations
-                for i in range(len(symbols)):
-                    if symbols[i] == self.salt_info["cation"]:
-                        mol_id += 1
-                        f.write(f"{atom_id} {mol_id} 2 {cation_params['charge']:.4f} ")
-                        f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
-                        atom_id += 1
-
-                # Anions
-                for i in range(len(symbols)):
-                    if symbols[i] == self.salt_info["anion"]:
-                        mol_id += 1
-                        f.write(f"{atom_id} {mol_id} 3 {anion_params['charge']:.4f} ")
-                        f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
-                        atom_id += 1
-
-            # Determine atom types for water
-            o_type = 4 if self.parameters.n_salt > 0 else 2
-            h_type = 5 if self.parameters.n_salt > 0 else 3
-
-            # Write water molecules
+            # Write water molecules first (after metal)
+            # Always use type 2 for O and type 3 for H
             mol_id += 1
             water_mol_start = mol_id
             h_count = 0
@@ -719,18 +698,36 @@ H   -0.8164    0.0000    0.5773
             for i in range(len(symbols)):
                 if symbols[i] == "O":
                     o_atoms.append(atom_id)
-                    f.write(f"{atom_id} {mol_id} {o_type} {o_charge:.4f} ")
+                    f.write(f"{atom_id} {mol_id} 2 {o_charge:.4f} ")
                     f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
                     atom_id += 1
                 elif symbols[i] == "H":
                     h_atoms.append(atom_id)
-                    f.write(f"{atom_id} {mol_id} {h_type} {h_charge:.4f} ")
+                    f.write(f"{atom_id} {mol_id} 3 {h_charge:.4f} ")
                     f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
                     atom_id += 1
                     h_count += 1
                     # Increment molecule ID after every 2 H atoms (complete water molecule)
                     if h_count % 2 == 0:
                         mol_id += 1
+
+            # Write ions if present (each ion gets its own molecule ID)
+            if self.parameters.n_salt > 0:
+                # Cations (type 4)
+                for i in range(len(symbols)):
+                    if symbols[i] == self.salt_info["cation"]:
+                        mol_id += 1
+                        f.write(f"{atom_id} {mol_id} 4 {cation_params['charge']:.4f} ")
+                        f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                        atom_id += 1
+
+                # Anions (type 5)
+                for i in range(len(symbols)):
+                    if symbols[i] == self.salt_info["anion"]:
+                        mol_id += 1
+                        f.write(f"{atom_id} {mol_id} 5 {anion_params['charge']:.4f} ")
+                        f.write(f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n")
+                        atom_id += 1
 
             # Bonds
             if n_bonds > 0:

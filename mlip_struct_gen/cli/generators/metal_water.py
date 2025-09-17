@@ -99,16 +99,16 @@ Output formats:
         "--gap",
         "-g",
         type=float,
-        default=2.5,
-        help="Gap between metal surface and water in Angstroms (default: 2.5)",
+        default=0,
+        help="Gap between metal surface and water in Angstroms (default: 0)",
     )
 
     parser.add_argument(
         "--vacuum",
         "-v",
         type=float,
-        default=20.0,
-        help="Vacuum space above water in Angstroms (default: 20.0)",
+        default=0,
+        help="Vacuum space above water in Angstroms (default: 0)",
     )
 
     parser.add_argument(
@@ -460,16 +460,16 @@ Output formats:
         "--gap",
         "-g",
         type=float,
-        default=2.5,
-        help="Gap between metal surface and water in Angstroms (default: 2.5)",
+        default=0,
+        help="Gap between metal surface and water in Angstroms (default: 0)",
     )
 
     parser.add_argument(
         "--vacuum",
         "-v",
         type=float,
-        default=20.0,
-        help="Vacuum space above water in Angstroms (default: 20.0)",
+        default=0,
+        help="Vacuum space above water in Angstroms (default: 0)",
     )
 
     parser.add_argument(

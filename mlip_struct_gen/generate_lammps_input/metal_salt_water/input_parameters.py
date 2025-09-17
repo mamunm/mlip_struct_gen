@@ -1,24 +1,25 @@
-"""Input parameters for metal-water interface LAMMPS simulations."""
+"""Input parameters for metal-salt-water interface LAMMPS simulations."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union, Optional
 
 
 @dataclass
-class MetalWaterLAMMPSParameters:
-    """Parameters for metal-water interface LAMMPS simulations.
+class MetalSaltWaterLAMMPSParameters:
+    """Parameters for metal-salt-water interface LAMMPS simulations.
 
-    Parameters optimized for MLIP training data generation from metal-water interfaces.
+    Parameters optimized for MLIP training data generation from metal-salt-water interfaces.
     """
 
     # Required parameters
-    data_file: str | Path
+    data_file: Union[str, Path]
     metal_type: str  # Metal element (e.g., "Pt", "Au", "Cu")
+    salt_type: str  # Salt type (e.g., "NaCl", "KCl", "LiCl")
 
     # Simulation ensemble and conditions
     ensemble: str = "NVT"  # NPT, NVT, or NVE
-    temperatures: list[float] | float = field(default_factory=lambda: [330.0])  # K
+    temperatures: Union[list[float], float] = field(default_factory=lambda: [330.0])  # K
     pressure: float = 1.0  # bar (for NPT)
 
     # Simulation times (in ps)
@@ -40,11 +41,11 @@ class MetalWaterLAMMPSParameters:
     barostat_damping: float = 1000.0  # fs
 
     # Output options
-    output_file: str | None = None  # Auto-generated if not specified
-    coulomb_accuracy: float = 1.0e-4  # PPPM accuracy
+    output_file: Optional[str] = None  # Auto-generated if not specified
+    coulomb_accuracy: float = 1.0e-5  # PPPM accuracy
 
     # Advanced settings
-    timestep: float = 1.0  # fs (reduced for metal-water interface stability)
+    timestep: float = 1.0  # fs (reduced for metal-salt-water interface stability)
     seed: int = 12345  # Random seed
     use_velocity_scaling: bool = False  # Use velocity scaling instead of Nose-Hoover
     log: bool = False  # Enable logging
