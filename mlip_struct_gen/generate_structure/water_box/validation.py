@@ -35,7 +35,7 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
         parameters.box_size = (
             float(parameters.box_size),
             float(parameters.box_size),
-            float(parameters.box_size)
+            float(parameters.box_size),
         )
     elif isinstance(parameters.box_size, list | tuple):
         # Validate and normalize list/tuple
@@ -74,7 +74,7 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
         format_extensions = {
             "xyz": ".xyz",
             "lammps": ".data",
-            "poscar": ""  # POSCAR doesn't use an extension
+            "poscar": "",  # POSCAR doesn't use an extension
         }
         extension = format_extensions.get(parameters.output_format, ".xyz")
         parameters.output_file = str(output_path) + extension
@@ -123,8 +123,14 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
     # 5. n_water + density (computes box for n_water at specified density)
 
     # Invalid: all three specified
-    if parameters.box_size is not None and parameters.n_water is not None and parameters.density is not None:
-        raise ValueError("Cannot specify all three of box_size, n_water, and density. Choose at most two.")
+    if (
+        parameters.box_size is not None
+        and parameters.n_water is not None
+        and parameters.density is not None
+    ):
+        raise ValueError(
+            "Cannot specify all three of box_size, n_water, and density. Choose at most two."
+        )
 
     # Tolerance validation
     if not isinstance(parameters.tolerance, int | float):
@@ -169,13 +175,18 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
         # Import here to avoid circular imports
         try:
             from ...utils.logger import MLIPLogger
+
             if not isinstance(parameters.logger, MLIPLogger):
                 raise TypeError("logger must be an MLIPLogger instance or None")
         except ImportError:
             raise ImportError("MLIPLogger not available. Check utils.logger module.") from None
 
     # Check for reasonable molecule density (only if box_size is provided)
-    if parameters.box_size is not None and parameters.n_water is None and parameters.density is None:
+    if (
+        parameters.box_size is not None
+        and parameters.n_water is None
+        and parameters.density is None
+    ):
         # Will use water model's default density - check if reasonable
         model_density = get_water_density(parameters.water_model)
         box_volume_cm3 = np.prod(parameters.box_size) * 1e-24

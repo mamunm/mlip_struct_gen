@@ -432,10 +432,7 @@ class SaltWaterBoxLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append(f"dump_modify     1 element {' '.join(element_list)}")
 
         # Position dump for visualization
-        if len(temps) > 1:
-            pos_file = f"pos_T{temperature:.0f}.lammpstrj"
-        else:
-            pos_file = "pos.lammpstrj"
+        pos_file = f"pos_T{temperature:.0f}.lammpstrj" if len(temps) > 1 else "pos.lammpstrj"
         lines.append(f"dump            movie all atom ${{dump_freq}} {pos_file}")
         lines.append("")
 

@@ -3,7 +3,6 @@
 
 import argparse
 import sys
-from typing import Optional
 
 from .commands import generate
 
@@ -38,12 +37,14 @@ For more help on specific commands:
         version="%(prog)s 0.1.0",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable verbose output",
     )
     parser.add_argument(
-        "--quiet", "-q",
+        "--quiet",
+        "-q",
         action="store_true",
         help="Suppress all output except errors",
     )
@@ -66,7 +67,7 @@ For more help on specific commands:
     return parser
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """
     Main entry point for the CLI.
 
@@ -88,9 +89,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Handle commands
     if args.command == "generate":
         return generate.handle_command(args)
-    else:
-        parser.error(f"Unknown command: {args.command}")
-        return 1  # This line won't be reached but satisfies type checker
+
+    parser.error(f"Unknown command: {args.command}")
 
 
 if __name__ == "__main__":

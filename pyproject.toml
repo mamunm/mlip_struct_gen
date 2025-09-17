@@ -72,7 +72,15 @@ exclude = [
     "__pycache__",
     "build",
     "dist",
+    "artifacts",
 ]
+
+[tool.ruff.format]
+# Use ruff's formatter (replaces black)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [tool.ruff.lint]
 select = [
@@ -82,13 +90,13 @@ select = [
     "I",   # isort
     "B",   # flake8-bugbear
     "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
+    "UP",  # pyupgrade (replaces standalone pyupgrade)
     "N",   # pep8-naming
     "SIM", # flake8-simplify
     "TID", # flake8-tidy-imports
 ]
 ignore = [
-    "E501",  # line too long, handled by black
+    "E501",  # line too long, handled by formatter
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
     "N805",  # first argument of a method should be named 'self'
@@ -98,28 +106,13 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # unused imports in __init__.py
 "tests/**" = ["S101"]  # assert used in tests
+"experiments/**" = ["E501"]  # allow long lines in experiment scripts
 
 [tool.ruff.lint.isort]
 known-first-party = ["mlip_struct_gen"]
 
-[tool.black]
-line-length = 100
-target-version = ["py311", "py312"]
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # Directories
-  \.git
-  | \.mypy_cache
-  | \.ruff_cache
-  | \.venv
-  | __pycache__
-  | build
-  | dist
-  # Files
-  | artifacts
-)/
-'''
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = false
 
 [tool.mypy]
 python_version = "3.11"

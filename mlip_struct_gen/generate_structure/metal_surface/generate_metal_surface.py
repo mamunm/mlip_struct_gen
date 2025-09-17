@@ -1,6 +1,7 @@
 """Metal FCC(111) surface generation using ASE."""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -9,14 +10,17 @@ try:
     from ase.build import fcc111
     from ase.constraints import FixAtoms
     from ase.io import write
-except ImportError:
+except ImportError as e:
     raise ImportError(
         "ASE (Atomic Simulation Environment) is required for metal surface generation. "
         "Install with: pip install ase"
-    )
+    ) from e
 
 from .input_parameters import MetalSurfaceParameters
 from .validation import get_lattice_constant, validate_parameters
+
+if TYPE_CHECKING:
+    from ...utils.logger import MLIPLogger
 
 
 class MetalSurfaceGenerator:
@@ -37,7 +41,7 @@ class MetalSurfaceGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: MLIPLogger | None = None
+        self.logger: "MLIPLogger | None" = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -115,7 +119,7 @@ class MetalSurfaceGenerator:
             error_msg = f"Failed to generate metal surface: {e}"
             if self.logger:
                 self.logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from None
 
     def _apply_constraints(self, slab: Atoms) -> None:
         """
@@ -237,7 +241,7 @@ class MetalSurfaceGenerator:
         # Get atomic data
         positions = slab.get_positions()
         cell = slab.get_cell()
-        symbols = slab.get_chemical_symbols()
+        slab.get_chemical_symbols()
         metal = self.parameters.metal
 
         # Count atoms

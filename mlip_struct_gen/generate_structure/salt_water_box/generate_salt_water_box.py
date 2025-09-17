@@ -4,14 +4,17 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ...utils.logger import MLIPLogger
 from ..templates.salt_models import create_ion_xyz, get_salt_model, get_salt_stoichiometry
 from ..templates.water_models import create_water_xyz, get_water_density, get_water_model
 from .input_parameters import SaltWaterBoxGeneratorParameters
 from .validation import validate_parameters
+
+if TYPE_CHECKING:
+    from ...utils.logger import MLIPLogger
 
 
 class SaltWaterBoxGenerator:
@@ -32,7 +35,7 @@ class SaltWaterBoxGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: MLIPLogger | None = None
+        self.logger: "MLIPLogger | None" = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -357,14 +360,15 @@ class SaltWaterBoxGenerator:
     def _run_packmol(self, input_file: Path, work_dir: Path) -> None:
         """Run Packmol with the given input file."""
         try:
-            subprocess.run(
-                [self.parameters.packmol_executable],
-                stdin=open(input_file),
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=str(work_dir),
-            )
+            with open(input_file) as f:
+                subprocess.run(
+                    [self.parameters.packmol_executable],
+                    stdin=f,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    cwd=str(work_dir),
+                )
 
             if self.logger:
                 self.logger.success("Packmol execution completed successfully")
@@ -573,7 +577,7 @@ class SaltWaterBoxGenerator:
         symbols = atoms.get_chemical_symbols()  # type: ignore
         positions = atoms.get_positions()  # type: ignore
 
-        atom_data = [(s, p) for s, p in zip(symbols, positions, strict=False)]
+        atom_data = list(zip(symbols, positions, strict=False))
         atom_data.sort(key=lambda x: x[0], reverse=True)
 
         sorted_symbols = [s for s, _ in atom_data]

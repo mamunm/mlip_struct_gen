@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union, Optional
 
 
 @dataclass
@@ -13,13 +12,13 @@ class MetalSaltWaterLAMMPSParameters:
     """
 
     # Required parameters
-    data_file: Union[str, Path]
+    data_file: str | Path
     metal_type: str  # Metal element (e.g., "Pt", "Au", "Cu")
     salt_type: str  # Salt type (e.g., "NaCl", "KCl", "LiCl")
 
     # Simulation ensemble and conditions
     ensemble: str = "NVT"  # NPT, NVT, or NVE
-    temperatures: Union[list[float], float] = field(default_factory=lambda: [330.0])  # K
+    temperatures: list[float] | float = field(default_factory=lambda: [330.0])  # K
     pressure: float = 1.0  # bar (for NPT)
 
     # Simulation times (in ps)
@@ -41,7 +40,7 @@ class MetalSaltWaterLAMMPSParameters:
     barostat_damping: float = 1000.0  # fs
 
     # Output options
-    output_file: Optional[str] = None  # Auto-generated if not specified
+    output_file: str | None = None  # Auto-generated if not specified
     coulomb_accuracy: float = 1.0e-5  # PPPM accuracy
 
     # Advanced settings

@@ -41,7 +41,7 @@ def main():
     generator_test = WaterBoxGenerator(params_test)
     output_test = generator_test.run()
     print(f"Generated test system (216 molecules): {output_test}")
-    print(f"Box size auto-computed based on SPC/E density (0.997 g/cm³)")
+    print("Box size auto-computed based on SPC/E density (0.997 g/cm³)")
 
     # Example 4b: Standard MD simulation size (LAMMPS format)
     params_md = WaterBoxGeneratorParameters(
@@ -57,7 +57,7 @@ def main():
     generator_md = WaterBoxGenerator(params_md)
     output_md = generator_md.run()
     print(f"\nGenerated MD system (1000 molecules): {output_md}")
-    print(f"Box size auto-computed based on TIP3P density (0.997 g/cm³)")
+    print("Box size auto-computed based on TIP3P density (0.997 g/cm³)")
 
     # Example 4c: Large system (POSCAR format)
     params_large = WaterBoxGeneratorParameters(
@@ -73,7 +73,7 @@ def main():
     generator_large = WaterBoxGenerator(params_large)
     output_large = generator_large.run()
     print(f"\nGenerated large system (2000 molecules): {output_large}")
-    print(f"Box size auto-computed based on TIP4P density (0.997 g/cm³)")
+    print("Box size auto-computed based on TIP4P density (0.997 g/cm³)")
 
     # Example 4d: Minimal system for debugging
     params_minimal = WaterBoxGeneratorParameters(
@@ -106,7 +106,7 @@ def main():
     print(f"\nGenerated system with artifacts (300 molecules): {output_artifacts}")
     print("Check 'artifacts' directory for packmol.inp and water.xyz files")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Summary of auto-computed box sizes:")
     print("- All boxes are cubic when auto-computed")
     print("- Box size = (volume)^(1/3) where volume = mass/density")
@@ -115,7 +115,7 @@ def main():
     print("- XYZ: Simple coordinate format (examples 1, 4)")
     print("- LAMMPS: Full topology with bonds/angles (examples 2, 5)")
     print("- POSCAR: VASP format with sorted elements (example 3)")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

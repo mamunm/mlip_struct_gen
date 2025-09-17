@@ -91,14 +91,14 @@ def main():
     output_dense = generator_dense.run()
     print(f"Generated dense system (1000 molecules): {output_dense}")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Summary of exact molecule specifications:")
     print("- Small: 100 molecules in 20Å box → POSCAR format")
     print("- Medium: 500 molecules in 30x30x40Å → LAMMPS format")
     print("- Sparse: 200 molecules in 50Å box → XYZ format")
     print("- Dense: 1000 molecules in 25Å box → XYZ format")
     print("\nNote: Actual density depends on box size and molecule count")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

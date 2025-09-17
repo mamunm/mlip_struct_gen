@@ -111,7 +111,7 @@ def main():
     print(f"\nGenerated supercritical system (150 molecules at 0.3 g/cm³): {output_super}")
     print("Very large box computed due to extremely low density")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Summary of n_molecules + density combinations:")
     print("- Ice: 512 molecules @ 0.92 g/cm³ → Larger box")
     print("- Room temp: 864 molecules @ 0.997 g/cm³ → Standard box")
@@ -119,7 +119,7 @@ def main():
     print("- Compressed: 1000 molecules @ 1.2 g/cm³ → Smaller box")
     print("- Supercritical: 150 molecules @ 0.3 g/cm³ → Very large box")
     print("\nNote: Box size inversely proportional to density for fixed n_molecules")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

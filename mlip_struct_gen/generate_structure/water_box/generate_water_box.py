@@ -337,14 +337,15 @@ class WaterBoxGenerator:
             if self.logger:
                 self.logger.debug(f"Executing: {self.parameters.packmol_executable}")
 
-            subprocess.run(
-                [self.parameters.packmol_executable],
-                stdin=open(input_file),
-                capture_output=True,
-                text=True,
-                check=True,
-                cwd=str(work_dir),
-            )
+            with open(input_file) as f:
+                subprocess.run(
+                    [self.parameters.packmol_executable],
+                    stdin=f,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    cwd=str(work_dir),
+                )
 
             if self.logger:
                 self.logger.success("Packmol execution completed successfully")
@@ -530,7 +531,7 @@ class WaterBoxGenerator:
         positions = atoms.get_positions()  # type: ignore
 
         # Create a list of tuples (symbol, position) and sort in descending order
-        atom_data = [(s, p) for s, p in zip(symbols, positions, strict=False)]
+        atom_data = list(zip(symbols, positions, strict=False))
         atom_data.sort(key=lambda x: x[0], reverse=True)  # O comes before H in descending order
 
         # Extract sorted symbols and positions

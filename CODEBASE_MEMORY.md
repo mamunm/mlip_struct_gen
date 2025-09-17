@@ -10,7 +10,7 @@ This document provides a comprehensive overview of the MLIP Structure Generation
 
 **Primary Use Cases**:
 - Metal surface structure generation
-- Metal-water interface creation  
+- Metal-water interface creation
 - Salt-water box generation
 - LAMMPS simulation setup
 
@@ -107,7 +107,7 @@ def _generate_water_layer(self):
 #### **Core Components**:
 - **`input_parameters.py`**: Dataclass definitions for simulation parameters
 - **`lammps_input_generator.py`**: Basic water system inputs
-- **`lammps_salt_water_generator.py`**: Salt-water system inputs  
+- **`lammps_salt_water_generator.py`**: Salt-water system inputs
 - **`lammps_metal_input_generator.py`**: Metal surface inputs *(NEW)*
 - **`lammps_metal_water_input_generator.py`**: Metal-water interface inputs *(NEW)*
 - **`validation.py`**: Parameter validation and normalization
@@ -156,7 +156,7 @@ def generate(self) -> str:
 ```python
 class MLIPLogger:
     def info(self, message: str)           # General information
-    def step(self, message: str)           # Processing steps  
+    def step(self, message: str)           # Processing steps
     def success(self, message: str)        # Successful completion
     def warning(self, message: str)        # Warnings
     def error(self, message: str)          # Error messages
@@ -179,7 +179,7 @@ Every generator validates parameters before execution:
 ### 3. **Modular Architecture**
 Clear separation of concerns:
 - Structure generation ≠ MD setup
-- Water models ≠ metal potentials  
+- Water models ≠ metal potentials
 - Validation ≠ generation logic
 
 ### 4. **Error Handling Strategy**

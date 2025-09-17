@@ -149,7 +149,7 @@ def validate_parameters(params: MetalSurfaceParameters) -> None:
             )
 
 
-def get_lattice_constant(metal: str, custom_lattice: float = None) -> float:
+def get_lattice_constant(metal: str, custom_lattice: float | None = None) -> float:
     """
     Get lattice constant for a metal.
 

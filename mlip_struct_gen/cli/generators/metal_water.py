@@ -288,12 +288,11 @@ def handle_command(args: argparse.Namespace) -> int:
     # Warn if custom lattice constant differs significantly from default
     if args.lattice_constant is not None:
         default_lc = default_lattice_constants[args.metal]
-        if abs(args.lattice_constant - default_lc) > 0.1:
-            if not args.dry_run:
-                logger.warning(
-                    f"Specified lattice constant {args.lattice_constant} Å differs from "
-                    f"default {default_lc} Å for {args.metal}"
-                )
+        if abs(args.lattice_constant - default_lc) > 0.1 and not args.dry_run:
+            logger.warning(
+                f"Specified lattice constant {args.lattice_constant} Å differs from "
+                f"default {default_lc} Å for {args.metal}"
+            )
 
     # Dry run
     if args.dry_run:

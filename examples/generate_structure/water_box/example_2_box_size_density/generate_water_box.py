@@ -87,13 +87,13 @@ def main():
     output_poscar = generator_poscar.run()
     print(f"Generated POSCAR water box: {output_poscar}")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Summary of density variations:")
     print("- Ice density (0.92 g/cm³): Fewer molecules, ice-like")
     print("- High pressure (1.1 g/cm³): More molecules, compressed")
     print("- Supercritical (0.3 g/cm³): Very sparse, gas-like")
     print("- Standard (1.0 g/cm³): Normal liquid water at 25°C")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

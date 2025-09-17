@@ -4,23 +4,26 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 try:
-    from ase import Atoms
     from ase.build import fcc111
     from ase.constraints import FixAtoms
     from ase.io import read, write
-except ImportError:
+except ImportError as e:
     raise ImportError(
         "ASE (Atomic Simulation Environment) is required for metal-water generation. "
         "Install with: pip install ase"
-    )
+    ) from e
 
 from ...utils.water_models import WATER_MODELS
 from .input_parameters import MetalWaterParameters
 from .validation import get_lattice_constant, get_water_model_params, validate_parameters
+
+if TYPE_CHECKING:
+    from ...utils.logger import MLIPLogger
 
 
 class MetalWaterGenerator:
@@ -42,7 +45,7 @@ class MetalWaterGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: MLIPLogger | None = None
+        self.logger: "MLIPLogger | None" = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -114,7 +117,7 @@ class MetalWaterGenerator:
             error_msg = f"Failed to generate metal-water interface: {e}"
             if self.logger:
                 self.logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from None
 
     def _build_metal_surface(self) -> None:
         """Build the FCC(111) metal surface."""
@@ -186,16 +189,16 @@ class MetalWaterGenerator:
         avogadro = 6.022e23  # molecules/mol
 
         # Convert density to g/Å³
-        density_g_A3 = self.parameters.density * 1e-24  # g/cm³ to g/Å³
+        density_g_a3 = self.parameters.density * 1e-24  # g/cm³ to g/Å³
 
         # Calculate mass of water
         mass_g = self.parameters.n_water * water_mw / avogadro
 
         # Calculate required volume
-        volume_A3 = mass_g / density_g_A3
+        volume_a3 = mass_g / density_g_a3
 
         # Calculate height from volume
-        water_height = volume_A3 / (self.box_dimensions["x"] * self.box_dimensions["y"])
+        water_height = volume_a3 / (self.box_dimensions["x"] * self.box_dimensions["y"])
 
         if self.logger:
             self.logger.info(
@@ -316,7 +319,7 @@ H   -0.8164    0.0000    0.5773
                 raise RuntimeError(f"PACKMOL failed: {result.stderr}")
 
         except Exception as e:
-            raise RuntimeError(f"Error running PACKMOL: {e}")
+            raise RuntimeError(f"Error running PACKMOL: {e}") from e
 
     def _combine_metal_water(self) -> None:
         """Combine metal slab and water molecules."""
@@ -489,9 +492,9 @@ H   -0.8164    0.0000    0.5773
         symbols = self.combined_system.get_chemical_symbols()
 
         # Count atoms by type
-        n_metal = symbols.count(self.parameters.metal)
+        symbols.count(self.parameters.metal)
         n_o = symbols.count("O")
-        n_h = symbols.count("H")
+        symbols.count("H")
         n_water = n_o
 
         # Total counts

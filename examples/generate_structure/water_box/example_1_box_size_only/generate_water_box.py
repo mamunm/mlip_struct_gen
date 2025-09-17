@@ -67,12 +67,12 @@ def main():
     output_lammps = generator_lammps.run()
     print(f"Generated LAMMPS water box: {output_lammps}")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Summary:")
     print("- Cubic box: Uses SPC/E default density (0.997 g/cm³)")
     print("- Rectangular box: Uses TIP3P default density (0.997 g/cm³)")
     print("- LAMMPS format: Includes bonds and angles for MD simulations")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

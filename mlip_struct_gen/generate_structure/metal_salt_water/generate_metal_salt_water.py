@@ -4,19 +4,19 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 try:
-    from ase import Atoms
     from ase.build import fcc111
     from ase.constraints import FixAtoms
     from ase.io import read, write
-except ImportError:
+except ImportError as e:
     raise ImportError(
         "ASE (Atomic Simulation Environment) is required for metal-salt-water generation. "
         "Install with: pip install ase"
-    )
+    ) from e
 
 from ...utils.water_models import WATER_MODELS
 from .input_parameters import MetalSaltWaterParameters
@@ -27,6 +27,9 @@ from .validation import (
     get_water_model_params,
     validate_parameters,
 )
+
+if TYPE_CHECKING:
+    from ...utils.logger import MLIPLogger
 
 
 class MetalSaltWaterGenerator:
@@ -48,7 +51,7 @@ class MetalSaltWaterGenerator:
         validate_parameters(self.parameters)
 
         # Setup logger
-        self.logger: MLIPLogger | None = None
+        self.logger: "MLIPLogger | None" = None
         if self.parameters.log:
             if self.parameters.logger is not None:
                 self.logger = self.parameters.logger
@@ -126,7 +129,7 @@ class MetalSaltWaterGenerator:
             error_msg = f"Failed to generate metal-salt-water interface: {e}"
             if self.logger:
                 self.logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from None
 
     def _build_metal_surface(self) -> None:
         """Build the FCC(111) metal surface."""
@@ -216,13 +219,13 @@ class MetalSaltWaterGenerator:
             total_mass_g += cation_mass + anion_mass
 
         # Convert density to g/Å³
-        density_g_A3 = self.parameters.density * 1e-24  # g/cm³ to g/Å³
+        density_g_a3 = self.parameters.density * 1e-24  # g/cm³ to g/Å³
 
         # Calculate required volume
-        volume_A3 = total_mass_g / density_g_A3
+        volume_a3 = total_mass_g / density_g_a3
 
         # Calculate height from volume
-        solution_height = volume_A3 / (self.box_dimensions["x"] * self.box_dimensions["y"])
+        solution_height = volume_a3 / (self.box_dimensions["x"] * self.box_dimensions["y"])
 
         if self.logger:
             if self.parameters.include_salt_volume:
@@ -399,7 +402,7 @@ H   -0.8164    0.0000    0.5773
                 raise RuntimeError(f"PACKMOL failed: {result.stderr}")
 
         except Exception as e:
-            raise RuntimeError(f"Error running PACKMOL: {e}")
+            raise RuntimeError(f"Error running PACKMOL: {e}") from e
 
     def _combine_metal_solution(self) -> None:
         """Combine metal slab and salt-water solution."""
@@ -588,17 +591,15 @@ H   -0.8164    0.0000    0.5773
         symbols = self.combined_system.get_chemical_symbols()
 
         # Count atoms by type
-        n_metal = symbols.count(self.parameters.metal)
+        symbols.count(self.parameters.metal)
         n_o = symbols.count("O")
-        n_h = symbols.count("H")
+        symbols.count("H")
         n_water = n_o
 
         # Count ions
-        n_cations = 0
-        n_anions = 0
         if self.parameters.n_salt > 0:
-            n_cations = symbols.count(self.salt_info["cation"])
-            n_anions = symbols.count(self.salt_info["anion"])
+            symbols.count(self.salt_info["cation"])
+            symbols.count(self.salt_info["anion"])
 
         # Total counts
         n_atoms = len(positions)
@@ -692,7 +693,6 @@ H   -0.8164    0.0000    0.5773
             # Write water molecules first (after metal)
             # Always use type 2 for O and type 3 for H
             mol_id += 1
-            water_mol_start = mol_id
             h_count = 0
 
             for i in range(len(symbols)):

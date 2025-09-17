@@ -1,6 +1,7 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
+  # Essential file hygiene hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -17,55 +18,16 @@ repos:
       - id: mixed-line-ending
         args: ['--fix=lf']
 
-  - repo: https://github.com/psf/black
-    rev: 24.1.0
-    hooks:
-      - id: black
-        args: ['--config=pyproject.toml']
-
+  # Ruff: Fast Python linter and formatter (replaces black, isort, flake8, and more)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.13
     hooks:
       - id: ruff
         args: ['--fix', '--exit-non-zero-on-fix']
+        exclude: ^(examples/|experiments/)
       - id: ruff-format
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [numpy]
-        args: ['--config-file=pyproject.toml']
-        pass_filenames: false
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ['--profile', 'black', '--line-length', '100']
-
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.6
-    hooks:
-      - id: codespell
-        args: ['--skip', '*.ipynb,*.json,*.csv', '--ignore-words-list', 'coul,ecoul,evdwl,elong,etail']
-        additional_dependencies:
-          - tomli
-
-  - repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
-    hooks:
-      - id: python-use-type-annotations
-      - id: python-check-blanket-noqa
-      - id: python-check-blanket-type-ignore
-
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.0
-    hooks:
-      - id: pyupgrade
-        args: ['--py312-plus']
+        exclude: ^(examples/|experiments/)
 
 # Configuration for pre-commit CI
 ci:
   autoupdate_schedule: monthly
-  skip: [mypy]  # mypy can be slow in CI

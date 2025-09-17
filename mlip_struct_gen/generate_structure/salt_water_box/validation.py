@@ -209,11 +209,11 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
 
     # Check for reasonable salt concentration (only if box_size is provided)
     if parameters.box_size is not None and parameters.n_salt > 0:
-        box_volume_L = np.prod(parameters.box_size) * 1e-27  # Å³ to L
+        box_volume_l = np.prod(parameters.box_size) * 1e-27  # Å³ to L
 
         # Rough concentration check
         na = 6.022e23
-        concentration = parameters.n_salt / (na * box_volume_L)
+        concentration = parameters.n_salt / (na * box_volume_l)
 
         if concentration > 10.0:
             raise ValueError(
@@ -229,4 +229,5 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
                 f"High salt concentration (~{concentration:.1f} M) detected. "
                 "Consider setting include_salt_volume=True for better accuracy.",
                 UserWarning,
+                stacklevel=2,
             )
