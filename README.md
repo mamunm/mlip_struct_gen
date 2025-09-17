@@ -58,43 +58,93 @@ uv pip install -e .
 
 ## Quick Start
 
-### Command Line Interface
+### Structure Generation
 
-The package provides standalone CLI tools for each generator:
+The package provides a unified CLI interface through `mlip-struct-gen`:
 
 ```bash
-# Generate a water box
-mlip-water-box --n-water 500 --output water.data
+# Generate a water box with 500 molecules
+mlip-struct-gen generate water-box --n-water 500 --density 0.997 --output water.data
 
-# Create a salt-water electrolyte
-mlip-salt-water-box --n-water 500 --salt NaCl --n-salt 10 --output electrolyte.data
+# Create a 1M NaCl solution
+mlip-struct-gen generate salt-water-box --n-water 500 --n-salt 10 --salt NaCl --output nacl_1M.data
 
-# Build a Pt(111) surface
-mlip-metal-surface --metal Pt --size 4 4 6 --output pt_surface.vasp
+# Build a Pt(111) surface (6x6x8 unit cells)
+mlip-struct-gen generate metal-surface --metal Pt --size 6 6 8 --vacuum 20 --output pt_111.data
 
 # Create a metal-water interface
-mlip-metal-water --metal Pt --size 4 4 4 --n-water 100 --output pt_water.data
+mlip-struct-gen generate metal-water --metal Au --size 8 8 10 --n-water 400 --gap 2.5 --output au_water.data
 
-# Create an electrochemical interface
-mlip-metal-salt-water --metal Au --size 5 5 6 --salt KCl --n-salt 8 --n-water 200 --output interface.lammps
+# Build an electrochemical interface
+mlip-struct-gen generate metal-salt-water --metal Pt --size 7 7 10 --n-water 500 --n-salt 25 --salt KCl --output electrode.data
+```
+
+### LAMMPS Input Generation
+
+Generate optimized LAMMPS input files for molecular dynamics simulations:
+
+```bash
+# Water box simulation with NPT ensemble
+mlip-lammps-water water.data --water-model SPC/E --ensemble NPT --temperature 300 --pressure 1.0 --output in.water
+
+# Salt solution with proper ion parameters
+mlip-lammps-salt-water nacl_1M.data --salt NaCl --temperature 298.15 --output in.nacl
+
+# Metal surface with fixed bottom layers
+mlip-lammps-metal-surface pt_111.data --metal Pt --temperature 330 --fix-layers 2 --output in.pt_surface
+
+# Metal-water interface with water temperature monitoring
+mlip-lammps-metal-water au_water.data --metal Au --temperature 300 --fix-layers 3 --output in.au_water
+
+# Electrochemical interface with all interactions
+mlip-lammps-metal-salt-water electrode.data --metal Pt --salt KCl --temperature 330 --output in.electrode
+```
+
+### Complete Workflow Example
+
+```bash
+# Step 1: Generate structure
+mlip-struct-gen generate metal-water --metal Pt --size 6 6 8 --n-water 300 --output pt_water.data
+
+# Step 2: Create LAMMPS input
+mlip-lammps-metal-water pt_water.data --metal Pt --temperature 330 --equilibration-time 100 --production-time 500 --output in.pt_water
+
+# Step 3: Run simulation (requires LAMMPS)
+lmp -i in.pt_water
+
+# Step 4: Output files ready for snapshot extraction
+# - trajectory.lammpstrj (positions and forces)
+# - final.data (equilibrated structure)
+# - thermo output with T_water monitoring
 ```
 
 ### Python API
 
 ```python
-from mlip_struct_gen.generate_structure.water_box import WaterBoxGenerator, WaterBoxGeneratorParameters
-
-# Create parameters
-params = WaterBoxGeneratorParameters(
-    n_water=500,
-    density=1.0,  # g/cm³
-    output_file="water.lammps",
-    water_model="SPC/E"
-)
+from mlip_struct_gen.generate_structure.metal_water import MetalWaterGenerator, MetalWaterParameters
+from mlip_struct_gen.generate_lammps_input.metal_water import MetalWaterLAMMPSGenerator, MetalWaterLAMMPSParameters
 
 # Generate structure
-generator = WaterBoxGenerator(params)
-generator.run()
+struct_params = MetalWaterParameters(
+    metal="Pt",
+    size=(6, 6, 8),
+    n_water=300,
+    gap_above_metal=2.5,
+    output_file="pt_water.data"
+)
+struct_gen = MetalWaterGenerator(struct_params)
+struct_gen.run()
+
+# Generate LAMMPS input
+lammps_params = MetalWaterLAMMPSParameters(
+    data_file="pt_water.data",
+    metal_type="Pt",
+    temperature=330.0,
+    ensemble="NVT",
+    output_file="in.pt_water"
+)
+lammps_gen = MetalWaterLAMMPSGenerator(lammps_params)
+lammps_gen.generate()
 ```
 
 ## Parameter Specifications
@@ -215,16 +265,6 @@ mlip-metal-salt-water --metal Au --size 5 5 6 --salt KCl --n-salt 8 --n-water 20
 This feature is available for all generators and helps with:
 - Reproducing exact structure generation runs
 - Documenting simulation setups
-- Sharing configurations with collaborators
-
-## Examples
-
-Comprehensive examples for each generator are available in the `examples/` directory:
-- `examples/generate_structure/water_box/` - Various water box configurations
-- `examples/generate_structure/salt_water_box/` - Electrolyte solutions
-- `examples/generate_structure/metal_surface/` - Metal surface generation
-- `examples/generate_structure/metal_water/` - Metal-water interfaces
-- `examples/generate_structure/metal_salt_water/` - Electrochemical interfaces
 
 ## License
 
