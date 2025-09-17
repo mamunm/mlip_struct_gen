@@ -1,0 +1,12 @@
+{
+  "comment": "Lennard-Jones parameters for metals (epsilon in eV, sigma in Angstrom)",
+  "metals": {
+    "Cu": {"epsilon": 0.415, "sigma": 2.277},
+    "Ag": {"epsilon": 0.339, "sigma": 2.573},
+    "Au": {"epsilon": 0.474, "sigma": 2.637},
+    "Ni": {"epsilon": 0.469, "sigma": 2.222},
+    "Pd": {"epsilon": 0.376, "sigma": 2.450},
+    "Pt": {"epsilon": 0.680, "sigma": 2.475},
+    "Al": {"epsilon": 0.392, "sigma": 2.620}
+  }
+}

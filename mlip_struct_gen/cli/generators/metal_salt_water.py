@@ -222,7 +222,9 @@ def handle_command(args: argparse.Namespace) -> int:
 
         # Generate structure
         logger.info(f"Generating {args.metal}-salt-water interface...")
-        logger.info(f"  Building {args.metal}(111) surface ({args.size[0]}x{args.size[1]}x{args.size[2]})...")
+        logger.info(
+            f"  Building {args.metal}(111) surface ({args.size[0]}x{args.size[1]}x{args.size[2]})..."
+        )
         logger.info(f"  Adding {args.n_water} {args.water_model} water molecules...")
         logger.info(f"  Adding {args.n_salt} {args.salt} formula units...")
 

@@ -299,7 +299,9 @@ def handle_command(args: argparse.Namespace) -> int:
     if args.dry_run:
         logger.info("Dry run - would generate metal-water interface with:")
         logger.info(f"  Metal: {args.metal}")
-        logger.info(f"  Metal size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers")
+        logger.info(
+            f"  Metal size: {args.size[0]}x{args.size[1]} unit cells, {args.size[2]} layers"
+        )
         logger.info(f"  Water molecules: {args.n_water}")
         logger.info(f"  Water model: {args.water_model}")
         logger.info(f"  Water density: {args.density} g/cm^3")

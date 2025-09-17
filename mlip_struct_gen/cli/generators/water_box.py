@@ -291,7 +291,9 @@ def handle_command(args: argparse.Namespace) -> int:
                         f"  Box size: {args.box_size[0]} x {args.box_size[1]} x {args.box_size[2]} Å"
                     )
                 else:
-                    logger.info(f"  Box size: {args.box_size} x {args.box_size} x {args.box_size} Å")
+                    logger.info(
+                        f"  Box size: {args.box_size} x {args.box_size} x {args.box_size} Å"
+                    )
 
             if args.save_artifacts:
                 logger.info("  Artifacts saved in 'artifacts' directory")

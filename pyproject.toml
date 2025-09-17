@@ -38,6 +38,7 @@ mlip-metal-water = "mlip_struct_gen.cli.generators.metal_water:main"
 mlip-metal-salt-water = "mlip_struct_gen.cli.generators.metal_salt_water:main"
 mlip-lammps-water = "mlip_struct_gen.cli.lammps.water_box:main"
 mlip-lammps-salt-water = "mlip_struct_gen.cli.lammps.salt_water_box:main"
+mlip-lammps-metal-surface = "mlip_struct_gen.cli.lammps.metal_surface:main"
 
 [project.optional-dependencies]
 dev = [
