@@ -498,7 +498,12 @@ class MetalSaltWaterLAMMPSGenerator(BaseLAMMPSGenerator):
         traj_file = "trajectory.lammpstrj"
 
         # Basic dump with positions
-        lines.append(f"dump traj all custom {dump_steps} {traj_file} id type x y z")
+        lines.append(f"dump traj all custom {dump_steps} {traj_file} id type element x y z")
+        # Add element mapping so trajectory file has proper element information
+        # Type 1=metal, 2=O, 3=H, 4=cation, 5=anion
+        lines.append(
+            f"dump_modify traj element {self.parameters.metal_type} O H {self.cation} {self.anion}"
+        )
         lines.append("")
 
         # Force dump if needed for MLIP

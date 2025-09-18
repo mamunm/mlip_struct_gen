@@ -251,7 +251,7 @@ class MetalSurfaceLAMMPSGenerator(BaseLAMMPSGenerator):
             traj_file = "trajectory.lammpstrj"
 
         # Dump with forces and optionally stress
-        dump_vars = "id type x y z fx fy fz"
+        dump_vars = "id type element x y z fx fy fz"
         if self.parameters.compute_stress:
             dump_vars += " c_stress_atom[1] c_stress_atom[2] c_stress_atom[3] c_stress_atom[4] c_stress_atom[5] c_stress_atom[6]"
         if self.parameters.compute_centro:
@@ -259,6 +259,8 @@ class MetalSurfaceLAMMPSGenerator(BaseLAMMPSGenerator):
 
         lines.append(f"dump trajectory all custom {dump_steps} {traj_file} {dump_vars}")
         lines.append("dump_modify trajectory sort id")
+        # Add element mapping so trajectory file has proper element information
+        lines.append(f"dump_modify trajectory element {self.parameters.metal_type}")
         lines.append("")
 
         # Production ensemble
