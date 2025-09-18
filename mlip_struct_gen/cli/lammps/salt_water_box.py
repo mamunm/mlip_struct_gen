@@ -6,6 +6,7 @@ from mlip_struct_gen.generate_lammps_input.salt_water_box import SaltWaterBoxLAM
 from mlip_struct_gen.generate_lammps_input.salt_water_box.input_parameters import (
     SaltWaterBoxLAMMPSParameters,
 )
+from mlip_struct_gen.utils.json_utils import save_parameters_to_json
 from mlip_struct_gen.utils.logger import MLIPLogger
 
 logger = MLIPLogger()
@@ -98,6 +99,12 @@ def setup_parser(subparsers):
         help="PPPM accuracy for Coulomb interactions (default: 1.0e-4)",
     )
 
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to lammps_params.json",
+    )
+
     parser.set_defaults(func=run_salt_water_box)
 
 
@@ -120,11 +127,16 @@ def run_salt_water_box(args):
         coulomb_accuracy=args.coulomb_accuracy,
     )
 
-    # Create generator
-    generator = SaltWaterBoxLAMMPSGenerator(parameters)
-
     # Set output file in parameters
     parameters.output_file = args.output
+
+    # Save input parameters if requested
+    if hasattr(args, "save_input") and args.save_input:
+        save_parameters_to_json(parameters, "lammps_params.json")
+        logger.info("Parameters saved to lammps_params.json")
+
+    # Create generator
+    generator = SaltWaterBoxLAMMPSGenerator(parameters)
 
     # Generate and write input file
     generator.generate()
@@ -220,6 +232,12 @@ def main():
         type=float,
         default=1.0e-4,
         help="PPPM accuracy for Coulomb interactions (default: 1.0e-4)",
+    )
+
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to lammps_params.json",
     )
 
     args = parser.parse_args()
