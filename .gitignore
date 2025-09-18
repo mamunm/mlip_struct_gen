@@ -236,9 +236,8 @@ config.json
 *.backup
 
 # Experiment directories
-experiments/*/output/
-experiments/*/results/
-experiments/*/tmp/
+experiments
+revPBE-D3_Struct_Gen
 
 # Job submission files
 submit.sh

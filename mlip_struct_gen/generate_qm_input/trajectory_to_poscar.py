@@ -43,7 +43,7 @@ class TrajectoryToPOSCAR:
     def _sort_atoms_by_element(self, atoms):
         """
         Sort atoms by element type for proper POSCAR format.
-        Groups atoms by element with H first, then O.
+        Order: metals, O, H, cations, anions
 
         Args:
             atoms: ASE Atoms object
@@ -51,12 +51,47 @@ class TrajectoryToPOSCAR:
         Returns:
             ASE Atoms object with sorted atoms
         """
-        import numpy as np
         from ase import Atoms
+        from ase.data import atomic_numbers
 
-        # Get indices sorted by element (H=1, O=8, so H comes first naturally)
+        # Define element categories
+        # Common FCC metals
+        metals = {"Pt", "Au", "Ag", "Pd", "Cu", "Ni", "Rh", "Ir", "Al", "Pb", "Ca", "Sr", "Yb"}
+
+        # Common cations (alkali and alkaline earth metals)
+        cations = {"Li", "Na", "K", "Rb", "Cs", "Mg", "Ca", "Sr", "Ba"}
+
+        # Common anions
+        anions = {"F", "Cl", "Br", "I"}
+
+        # Get symbols and create sorting key
         symbols = atoms.get_chemical_symbols()
-        sorted_indices = np.argsort(symbols)
+        indices = list(range(len(symbols)))
+
+        def sort_key(idx):
+            """Define sorting priority for atoms."""
+            symbol = symbols[idx]
+
+            # Priority order: 1=metal, 2=O, 3=H, 4=cation, 5=anion, 6=other
+            if symbol in metals:
+                # Sort metals by atomic number within category
+                return (1, atomic_numbers[symbol])
+            elif symbol == "O":
+                return (2, 0)
+            elif symbol == "H":
+                return (3, 0)
+            elif symbol in cations:
+                # Sort cations by atomic number within category
+                return (4, atomic_numbers[symbol])
+            elif symbol in anions:
+                # Sort anions by atomic number within category
+                return (5, atomic_numbers[symbol])
+            else:
+                # Other elements sorted by atomic number at the end
+                return (6, atomic_numbers[symbol])
+
+        # Sort indices based on the key
+        sorted_indices = sorted(indices, key=sort_key)
 
         # Create new atoms object with sorted order
         sorted_atoms = Atoms(
@@ -65,6 +100,17 @@ class TrajectoryToPOSCAR:
             cell=atoms.cell,
             pbc=atoms.pbc,
         )
+
+        # Log the element ordering if logger is available
+        if self.logger:
+            unique_symbols = []
+            seen = set()
+            for i in sorted_indices:
+                symbol = symbols[i]
+                if symbol not in seen:
+                    unique_symbols.append(symbol)
+                    seen.add(symbol)
+            self.logger.debug(f"Element order in POSCAR: {' '.join(unique_symbols)}")
 
         return sorted_atoms
 
@@ -103,7 +149,7 @@ class TrajectoryToPOSCAR:
             snapshot_dir = self.output_dir / f"{self.prefix}_{i:0{padding_width}d}"
             snapshot_dir.mkdir(exist_ok=True)
 
-            # Sort atoms by element (H first, then O for water)
+            # Sort atoms by element (metal, O, H, cation, anion order)
             sorted_atoms = self._sort_atoms_by_element(atoms)
 
             # Write POSCAR file

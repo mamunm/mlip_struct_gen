@@ -41,6 +41,7 @@ mlip-lammps-salt-water = "mlip_struct_gen.cli.lammps.salt_water_box:main"
 mlip-lammps-metal-surface = "mlip_struct_gen.cli.lammps.metal_surface:main"
 mlip-lammps-metal-water = "mlip_struct_gen.cli.lammps.metal_water:main"
 mlip-lammps-metal-salt-water = "mlip_struct_gen.cli.lammps.metal_salt_water:main"
+mlip-trajectory-to-poscar = "mlip_struct_gen.cli.converters.trajectory_to_poscar:main"
 
 [project.optional-dependencies]
 dev = [

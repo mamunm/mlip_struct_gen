@@ -4,7 +4,7 @@
 import argparse
 import sys
 
-from .commands import generate
+from .commands import convert, generate
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -60,9 +60,11 @@ For more help on specific commands:
     # Add generate command
     generate.add_parser(subparsers)
 
+    # Add convert command
+    convert.add_parser(subparsers)
+
     # Future commands can be added here:
     # analyze.add_parser(subparsers)
-    # convert.add_parser(subparsers)
 
     return parser
 
@@ -89,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     # Handle commands
     if args.command == "generate":
         return generate.handle_command(args)
+    elif args.command == "convert":
+        return convert.handle_command(args)
 
     parser.error(f"Unknown command: {args.command}")
 
