@@ -6,6 +6,7 @@ from mlip_struct_gen.generate_lammps_input.metal_surface import (
     MetalSurfaceLAMMPSGenerator,
     MetalSurfaceLAMMPSParameters,
 )
+from mlip_struct_gen.utils.json_utils import save_parameters_to_json
 from mlip_struct_gen.utils.logger import MLIPLogger
 
 logger = MLIPLogger()
@@ -129,6 +130,12 @@ def setup_parser(subparsers):
         help="Compute centrosymmetry parameter (default: True)",
     )
 
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to lammps_params.json",
+    )
+
     parser.set_defaults(func=run_metal_surface)
 
 
@@ -155,6 +162,11 @@ def run_metal_surface(args):
         compute_centro=args.compute_centro,
         output_file=args.output,
     )
+
+    # Save input parameters if requested
+    if hasattr(args, "save_input") and args.save_input:
+        save_parameters_to_json(parameters, "lammps_params.json")
+        logger.info("Parameters saved to lammps_params.json")
 
     # Create generator
     generator = MetalSurfaceLAMMPSGenerator(parameters)
@@ -286,6 +298,12 @@ def main():
         action="store_true",
         default=True,
         help="Compute centrosymmetry parameter (default: True)",
+    )
+
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to lammps_params.json",
     )
 
     args = parser.parse_args()

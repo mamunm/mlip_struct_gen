@@ -127,7 +127,9 @@ class MetalSurfaceLAMMPSGenerator(BaseLAMMPSGenerator):
         else:
             # No fixed layers - all atoms are mobile
             lines.append("# All atoms are mobile")
-            lines.append("group mobile_atoms type *")
+            lines.append("# Create a region that includes entire simulation box")
+            lines.append("region all_region block EDGE EDGE EDGE EDGE EDGE EDGE")
+            lines.append("group mobile_atoms region all_region")
             lines.append("")
 
         # Compute properties for MLIP training
