@@ -4,7 +4,7 @@
 import argparse
 import sys
 
-from .commands import convert, generate
+from .commands import convert, generate, wannier
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -63,6 +63,9 @@ For more help on specific commands:
     # Add convert command
     convert.add_parser(subparsers)
 
+    # Add wannier command
+    wannier.add_parser(subparsers)
+
     # Future commands can be added here:
     # analyze.add_parser(subparsers)
 
@@ -93,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         return generate.handle_command(args)
     elif args.command == "convert":
         return convert.handle_command(args)
+    elif args.command == "compute-wc":
+        return wannier.handle_command(args)
 
     parser.error(f"Unknown command: {args.command}")
 
