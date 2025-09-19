@@ -6,6 +6,7 @@ from mlip_struct_gen.generate_lammps_input.metal_salt_water import (
     MetalSaltWaterLAMMPSGenerator,
     MetalSaltWaterLAMMPSParameters,
 )
+from mlip_struct_gen.utils.json_utils import save_parameters_to_json
 from mlip_struct_gen.utils.logger import MLIPLogger
 
 logger = MLIPLogger()
@@ -139,6 +140,12 @@ def setup_parser(subparsers):
         help="Compute per-atom stress for MLIP training (default: True)",
     )
 
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to lammps_params.json",
+    )
+
     parser.set_defaults(func=run_metal_salt_water)
 
 
@@ -166,6 +173,10 @@ def run_metal_salt_water(args):
         compute_stress=args.compute_stress,
         output_file=args.output,
     )
+
+    # Save input parameters if requested
+    if hasattr(args, "save_input") and args.save_input:
+        save_parameters_to_json(parameters, "lammps_params.json")
 
     # Create generator
     generator = MetalSaltWaterLAMMPSGenerator(parameters)
@@ -309,6 +320,12 @@ def main():
         action="store_true",
         default=True,
         help="Compute per-atom stress for MLIP training (default: True)",
+    )
+
+    parser.add_argument(
+        "--save-input",
+        action="store_true",
+        help="Save input parameters to lammps_params.json",
     )
 
     args = parser.parse_args()
