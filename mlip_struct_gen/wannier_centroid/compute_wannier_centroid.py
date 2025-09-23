@@ -120,7 +120,23 @@ def compute_wannier_centroid(folder_path: Path, verbose: bool = False) -> dict:
 
         indices, distances, vectors = find_k_nearest_neighbors(pos, wannier_positions, cell, k)
 
-        wannier_centroid = np.sum(vectors, axis=0)
+        # Calculate PBC-corrected positions of wannier centers relative to the atom
+        # This follows the logic: corrected_pos = atom_pos + vector_to_wannier
+        pbc_corrected_wannier_positions = []
+        for vec in vectors:
+            corrected_pos = pos + vec
+            pbc_corrected_wannier_positions.append(corrected_pos)
+
+        # Calculate average position of wannier centers
+        avg_wannier_pos = np.mean(pbc_corrected_wannier_positions, axis=0)
+
+        # Calculate vector from atom to average wannier position
+        wannier_centroid = avg_wannier_pos - pos
+
+        # Apply minimum image convention to the final vector
+        inv_cell = np.linalg.inv(cell)
+        wannier_centroid = wannier_centroid - np.round(wannier_centroid @ inv_cell) @ cell
+
         centroid_norm = np.linalg.norm(wannier_centroid)
 
         atom_result = {
@@ -130,6 +146,7 @@ def compute_wannier_centroid(folder_path: Path, verbose: bool = False) -> dict:
             "wannier_centers": wannier_positions[indices],
             "wannier_vectors": vectors,
             "wannier_distances": distances,
+            "average_wannier_position": avg_wannier_pos,
             "wannier_centroid": wannier_centroid,
             "wannier_centroid_norm": centroid_norm,
         }
@@ -141,7 +158,8 @@ def compute_wannier_centroid(folder_path: Path, verbose: bool = False) -> dict:
             print(f"  Nearest {k} wannier centers:")
             for j, (idx, dist, vec) in enumerate(zip(indices, distances, vectors, strict=False)):
                 print(f"    WC{j+1}: index={idx}, dist={dist:.4f}, vec={vec}")
-            print(f"  Wannier centroid: {wannier_centroid}")
+            print(f"  Average wannier position: {avg_wannier_pos}")
+            print(f"  Wannier centroid (vector from atom to avg): {wannier_centroid}")
             print(f"  Centroid norm: {centroid_norm:.4f}")
 
     return results
@@ -164,7 +182,7 @@ def save_results(results: list[dict], output_dir: Path) -> None:
         f.write("# Wannier Centroid Computation Results\n")
         f.write("# Format: atom_index atom_symbol atom_position[x,y,z] ")
         f.write("wannier_centers[positions] wannier_vectors[x,y,z] wannier_distances ")
-        f.write("wannier_centroid[x,y,z] wannier_centroid_norm\n")
+        f.write("average_wannier_position[x,y,z] wannier_centroid[x,y,z] wannier_centroid_norm\n")
         f.write("#" + "=" * 100 + "\n")
 
         for result in results:
@@ -187,7 +205,10 @@ def save_results(results: list[dict], output_dir: Path) -> None:
                 f.write(f"dist={wc_dist:.6f}\n")
 
             f.write(
-                f"  Wannier centroid: ({result['wannier_centroid'][0]:.6f}, {result['wannier_centroid'][1]:.6f}, {result['wannier_centroid'][2]:.6f})\n"
+                f"  Average wannier position: ({result['average_wannier_position'][0]:.6f}, {result['average_wannier_position'][1]:.6f}, {result['average_wannier_position'][2]:.6f})\n"
+            )
+            f.write(
+                f"  Wannier centroid (atom->avg): ({result['wannier_centroid'][0]:.6f}, {result['wannier_centroid'][1]:.6f}, {result['wannier_centroid'][2]:.6f})\n"
             )
             f.write(f"  Centroid norm: {result['wannier_centroid_norm']:.6f}\n")
             f.write("-" * 50 + "\n")

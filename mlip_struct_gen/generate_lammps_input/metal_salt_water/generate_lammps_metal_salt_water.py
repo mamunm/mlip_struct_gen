@@ -77,6 +77,12 @@ ION_PARAMS_METAL = {
         "epsilon": 0.0386160,  # 0.88210000 kcal/mol = 0.0386160 eV
         "sigma": 4.16524,  # Angstrom
     },
+    "Cs": {
+        "mass": 132.905,
+        "charge": 1.0,
+        "epsilon": 0.0321713,  # 0.73542900 kcal/mol = 0.0321713 eV
+        "sigma": 3.52320,  # Angstrom
+    },
 }
 
 
@@ -124,6 +130,7 @@ class MetalSaltWaterLAMMPSGenerator(BaseLAMMPSGenerator):
             "NaCl": ("Na", "Cl"),
             "KCl": ("K", "Cl"),
             "LiCl": ("Li", "Cl"),
+            "CsCl": ("Cs", "Cl"),
             "NaF": ("Na", "F"),
             "KF": ("K", "F"),
             "LiF": ("Li", "F"),
@@ -458,10 +465,25 @@ class MetalSaltWaterLAMMPSGenerator(BaseLAMMPSGenerator):
         )
         lines.append("")
 
+        # Equilibration trajectory dump
+        eq_dump_steps = int(self.parameters.dump_frequency / timestep_ps)
+        lines.append("# Equilibration trajectory output")
+        lines.append(
+            f"dump eq_traj all custom {eq_dump_steps} eq_trajectory.lammpstrj id type element x y z"
+        )
+        lines.append(
+            f"dump_modify eq_traj element {self.parameters.metal_type} O H {self.cation} {self.anion}"
+        )
+        lines.append("")
+
         # Run equilibration
         lines.append("# Equilibration phase")
         lines.append(f"# {self.parameters.equilibration_time:.1f} ps = {eq_steps} steps")
         lines.append(f"run {eq_steps}")
+        lines.append("")
+
+        # Undump equilibration trajectory
+        lines.append("undump eq_traj")
         lines.append("")
 
         return lines

@@ -178,6 +178,16 @@ class MetalSurfaceLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append(f"# {self.parameters.equilibration_time:.1f} ps ({eq_steps} steps)")
         lines.append("")
 
+        # Equilibration trajectory dump
+        eq_dump_steps = int(self.parameters.dump_frequency / (self.parameters.timestep * 0.001))
+        lines.append("# Equilibration trajectory output")
+        lines.append(
+            f"dump eq_traj all custom {eq_dump_steps} eq_trajectory.lammpstrj id type element x y z"
+        )
+        lines.append("dump_modify eq_traj sort id")
+        lines.append(f"dump_modify eq_traj element {self.parameters.metal_type}")
+        lines.append("")
+
         # Equilibration ensemble
         if self.parameters.ensemble == "NPT":
             lines.append("# NPT ensemble with Nosé-Hoover thermostat and barostat")
@@ -200,6 +210,10 @@ class MetalSurfaceLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append("")
         lines.append("# Run equilibration")
         lines.append(f"run {eq_steps}")
+        lines.append("")
+
+        # Undump equilibration trajectory
+        lines.append("undump eq_traj")
         lines.append("")
 
         # Unfix equilibration integrator

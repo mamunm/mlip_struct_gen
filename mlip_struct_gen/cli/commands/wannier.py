@@ -38,7 +38,7 @@ def handle_command(args: argparse.Namespace) -> int:
         Exit code (0 for success, non-zero for failure)
     """
     try:
-        from ...wannier_centroid import compute_wannier_centroid
+        from ...wannier_centroid.compute_wannier_centroid import main
 
         folder_path = Path(args.folder)
 
@@ -57,7 +57,7 @@ def handle_command(args: argparse.Namespace) -> int:
             print(f"Error: wannier90_centres.xyz not found at {wannier_path}")
             return 1
 
-        compute_wannier_centroid.main(str(folder_path), verbose=args.verbose)
+        main(str(folder_path), verbose=args.verbose)
 
         return 0
 

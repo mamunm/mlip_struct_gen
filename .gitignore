@@ -162,6 +162,7 @@ Thumbs.db
 *.data
 log.lammps
 in.*
+*.tar.gz
 
 # VASP files
 INCAR

@@ -270,6 +270,19 @@ class WaterBoxLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append(f"# {eq_time_ps:.1f} ps ({self.parameters.equilibration_steps} steps)")
         lines.append("")
 
+        # Equilibration trajectory dump
+        lines.append("# Equilibration trajectory output")
+        lines.append(
+            f"dump eq_traj all custom {self.parameters.dump_frequency} eq_trajectory.lammpstrj id type element x y z"
+        )
+
+        # Determine element mapping based on water model
+        if self.parameters.water_model.upper() == "TIP4P":
+            lines.append("dump_modify eq_traj element O H M")
+        else:
+            lines.append("dump_modify eq_traj element O H")
+        lines.append("")
+
         # Equilibration ensemble
         if self.parameters.ensemble == "NPT":
             lines.append("# NPT ensemble with Nosé-Hoover thermostat and barostat")
@@ -288,6 +301,10 @@ class WaterBoxLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append("")
         lines.append("# Run equilibration")
         lines.append(f"run {self.parameters.equilibration_steps}")
+        lines.append("")
+
+        # Undump equilibration trajectory
+        lines.append("undump eq_traj")
         lines.append("")
 
         # Unfix equilibration integrator

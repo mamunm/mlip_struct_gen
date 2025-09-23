@@ -342,6 +342,25 @@ class SaltWaterBoxLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append(f"# {eq_time_ps:.1f} ps ({self.parameters.equilibration_steps} steps)")
         lines.append("")
 
+        # Equilibration trajectory dump
+        lines.append("# Equilibration trajectory output")
+
+        # Element mapping for water and ions
+        element_list = []
+        for atom_type in sorted(self.system_info["masses"].keys()):
+            if atom_type in self.atom_type_map:
+                element_list.append(self.atom_type_map[atom_type])
+            elif atom_type in self.ion_type_map:
+                element_list.append(self.ion_type_map[atom_type])
+            else:
+                element_list.append("X")  # Unknown
+
+        lines.append(
+            f"dump eq_traj all custom {self.parameters.dump_frequency} eq_trajectory.lammpstrj id type element x y z"
+        )
+        lines.append(f"dump_modify eq_traj element {' '.join(element_list)}")
+        lines.append("")
+
         # Equilibration ensemble
         if self.parameters.ensemble == "NPT":
             lines.append("# NPT ensemble with Nosé-Hoover thermostat and barostat")
@@ -360,6 +379,10 @@ class SaltWaterBoxLAMMPSGenerator(BaseLAMMPSGenerator):
         lines.append("")
         lines.append("# Run equilibration")
         lines.append(f"run {self.parameters.equilibration_steps}")
+        lines.append("")
+
+        # Undump equilibration trajectory
+        lines.append("undump eq_traj")
         lines.append("")
 
         # Unfix equilibration integrator

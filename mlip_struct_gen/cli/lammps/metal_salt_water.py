@@ -45,7 +45,7 @@ def setup_parser(subparsers):
         "-s",
         type=str,
         required=True,
-        choices=["NaCl", "KCl", "LiCl", "NaF", "KF", "LiF", "NaBr", "KBr", "LiBr"],
+        choices=["NaCl", "KCl", "LiCl", "CsCl", "NaF", "KF", "LiF", "NaBr", "KBr", "LiBr"],
         help="Salt type (e.g., NaCl, KCl)",
     )
 
@@ -227,7 +227,7 @@ def main():
         "-s",
         type=str,
         required=True,
-        choices=["NaCl", "KCl", "LiCl", "NaF", "KF", "LiF", "NaBr", "KBr", "LiBr"],
+        choices=["NaCl", "KCl", "LiCl", "CsCl", "NaF", "KF", "LiF", "NaBr", "KBr", "LiBr"],
         help="Salt type (e.g., NaCl, KCl)",
     )
 
