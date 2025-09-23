@@ -5,6 +5,39 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .input_parameters import MetalSurfaceParameters
+from .validation import get_lattice_constant, validate_parameters
+
+if TYPE_CHECKING:
+    from ...utils.logger import MLIPLogger
+
+# Element masses in g/mol
+ELEMENT_MASSES = {
+    "H": 1.008,
+    "O": 15.9994,
+    "Na": 22.98977,
+    "Cl": 35.453,
+    "K": 39.0983,
+    "Li": 6.941,
+    "Ca": 40.078,
+    "Mg": 24.305,
+    "Br": 79.904,
+    "Cs": 132.905,
+    "Pt": 195.078,
+    "Au": 196.967,
+    "Ag": 107.868,
+    "Cu": 63.546,
+    "Ni": 58.693,
+    "Pd": 106.42,
+    "Fe": 55.845,
+    "Al": 26.982,
+    "Pb": 207.2,
+    "Rh": 102.906,
+    "Ir": 192.217,
+    "Sr": 87.62,
+    "Yb": 173.04,
+}
+
 try:
     from ase import Atoms
     from ase.build import fcc111
@@ -15,12 +48,6 @@ except ImportError as e:
         "ASE (Atomic Simulation Environment) is required for metal surface generation. "
         "Install with: pip install ase"
     ) from e
-
-from .input_parameters import MetalSurfaceParameters
-from .validation import get_lattice_constant, validate_parameters
-
-if TYPE_CHECKING:
-    from ...utils.logger import MLIPLogger
 
 
 class MetalSurfaceGenerator:
@@ -264,8 +291,20 @@ class MetalSurfaceGenerator:
             f.write("0 dihedrals\n")
             f.write("0 impropers\n\n")
 
+            # Determine atom type based on elements parameter
+            if self.parameters.elements:
+                # Use predefined element order
+                if metal in self.parameters.elements:
+                    metal_type = self.parameters.elements.index(metal) + 1
+                else:
+                    metal_type = len(self.parameters.elements) + 1
+                max_atom_type = max(len(self.parameters.elements), metal_type)
+            else:
+                metal_type = 1
+                max_atom_type = 1
+
             # Types
-            f.write("1 atom types\n\n")
+            f.write(f"{max_atom_type} atom types\n\n")
 
             # Box dimensions
             f.write(f"0.0 {cell[0,0]:.6f} xlo xhi\n")
@@ -284,14 +323,35 @@ class MetalSurfaceGenerator:
 
             # Masses
             f.write("Masses\n\n")
-            f.write(f"1 {atomic_mass:.4f}  # {metal}\n\n")
+            if self.parameters.elements:
+                # Write masses for all defined elements
+                for i, elem in enumerate(self.parameters.elements, 1):
+                    if elem in ELEMENT_MASSES:
+                        mass = ELEMENT_MASSES[elem]
+                    elif elem == metal:
+                        mass = atomic_mass
+                    else:
+                        # Get from ASE if not in our list
+                        try:
+                            from ase.data import atomic_masses, atomic_numbers
+
+                            mass = atomic_masses[atomic_numbers.get(elem, 1)]
+                        except (ImportError, KeyError):
+                            mass = 1.0
+                    f.write(f"{i} {mass:.4f}  # {elem}\n")
+                # Add metal if not in elements list
+                if metal_type > len(self.parameters.elements):
+                    f.write(f"{metal_type} {atomic_mass:.4f}  # {metal}\n")
+            else:
+                f.write(f"1 {atomic_mass:.4f}  # {metal}\n")
+            f.write("\n")
 
             # Atoms
             f.write("Atoms\n\n")
             for i in range(n_atoms):
                 # atom_id mol_id atom_type charge x y z
                 f.write(
-                    f"{i+1} 1 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    f"{i+1} 1 {metal_type} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                 )
 
     def run(self, save_artifacts: bool = False) -> str:

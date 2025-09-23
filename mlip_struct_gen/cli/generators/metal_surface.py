@@ -133,6 +133,15 @@ Examples:
         help="Output file format. If not specified, inferred from extension",
     )
 
+    # Elements list for LAMMPS
+    parser.add_argument(
+        "--elements",
+        type=str,
+        nargs="+",
+        metavar="ELEM",
+        help="Element order for LAMMPS atom types (e.g., Pt O H Na Cl). Only for LAMMPS format",
+    )
+
     # Options
     parser.add_argument(
         "--log",
@@ -267,6 +276,7 @@ def handle_command(args: argparse.Namespace) -> int:
             fix_bottom_layers=args.fix_bottom_layers,
             orthogonalize=args.orthogonalize,
             output_format=args.output_format,
+            elements=args.elements if hasattr(args, "elements") else None,
             log=args.log,
             logger=param_logger,
         )

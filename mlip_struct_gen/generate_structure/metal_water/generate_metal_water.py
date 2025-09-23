@@ -8,6 +8,38 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ...utils.water_models import WATER_MODELS
+from .input_parameters import MetalWaterParameters
+from .validation import get_lattice_constant, get_water_model_params, validate_parameters
+
+if TYPE_CHECKING:
+    from ...utils.logger import MLIPLogger
+
+# Element masses in g/mol
+ELEMENT_MASSES = {
+    "H": 1.008,
+    "O": 15.9994,
+    "Na": 22.98977,
+    "Cl": 35.453,
+    "K": 39.0983,
+    "Li": 6.941,
+    "Ca": 40.078,
+    "Mg": 24.305,
+    "Br": 79.904,
+    "Cs": 132.905,
+    "Pt": 195.078,
+    "Au": 196.967,
+    "Ag": 107.868,
+    "Cu": 63.546,
+    "Ni": 58.693,
+    "Pd": 106.42,
+    "Fe": 55.845,
+    "Al": 26.982,
+    "Pb": 207.2,
+    "Rh": 102.906,
+    "Ir": 192.217,
+}
+
 try:
     from ase.build import fcc111
     from ase.constraints import FixAtoms
@@ -17,13 +49,6 @@ except ImportError as e:
         "ASE (Atomic Simulation Environment) is required for metal-water generation. "
         "Install with: pip install ase"
     ) from e
-
-from ...utils.water_models import WATER_MODELS
-from .input_parameters import MetalWaterParameters
-from .validation import get_lattice_constant, get_water_model_params, validate_parameters
-
-if TYPE_CHECKING:
-    from ...utils.logger import MLIPLogger
 
 
 class MetalWaterGenerator:
@@ -531,8 +556,25 @@ H   -0.8164    0.0000    0.5773
             f.write("0 dihedrals\n")
             f.write("0 impropers\n\n")
 
+            # Determine atom types based on elements parameter
+            if self.parameters.elements:
+                # Use predefined element order
+                element_to_type = {elem: i + 1 for i, elem in enumerate(self.parameters.elements)}
+                metal_type = element_to_type.get(
+                    self.parameters.metal, len(self.parameters.elements) + 1
+                )
+                o_type = element_to_type.get("O", len(self.parameters.elements) + 2)
+                h_type = element_to_type.get("H", len(self.parameters.elements) + 3)
+                max_type = max(len(self.parameters.elements), metal_type, o_type, h_type)
+            else:
+                # Sequential numbering: Metal=1, O=2, H=3
+                metal_type = 1
+                o_type = 2
+                h_type = 3
+                max_type = 3
+
             # Types
-            f.write("3 atom types\n")
+            f.write(f"{max_type} atom types\n")
             f.write("1 bond types\n")
             f.write("1 angle types\n\n")
 
@@ -543,9 +585,37 @@ H   -0.8164    0.0000    0.5773
 
             # Masses
             f.write("Masses\n\n")
-            f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
-            f.write("2 15.9994  # O\n")
-            f.write("3 1.00794  # H\n\n")
+            if self.parameters.elements:
+                # Write masses for all defined elements
+                for i, elem in enumerate(self.parameters.elements, 1):
+                    if elem in ELEMENT_MASSES:
+                        mass = ELEMENT_MASSES[elem]
+                    elif elem == self.parameters.metal:
+                        mass = metal_mass
+                    else:
+                        # Get from ASE if not in our list
+                        try:
+                            from ase.data import atomic_masses, atomic_numbers
+
+                            mass = atomic_masses[atomic_numbers.get(elem, 1)]
+                        except (ImportError, KeyError):
+                            mass = 1.0
+                    f.write(f"{i} {mass:.4f}  # {elem}\n")
+                # Add any missing types
+                written_types = len(self.parameters.elements)
+                if metal_type > written_types:
+                    f.write(f"{metal_type} {metal_mass:.4f}  # {self.parameters.metal}\n")
+                    written_types = metal_type
+                if o_type > written_types:
+                    f.write(f"{o_type} 15.9994  # O\n")
+                    written_types = o_type
+                if h_type > written_types:
+                    f.write(f"{h_type} 1.00794  # H\n")
+            else:
+                f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
+                f.write("2 15.9994  # O\n")
+                f.write("3 1.00794  # H\n")
+            f.write("\n")
 
             # Atoms
             f.write("Atoms\n\n")
@@ -560,7 +630,7 @@ H   -0.8164    0.0000    0.5773
             for i in range(len(symbols)):
                 if symbols[i] == self.parameters.metal:
                     f.write(
-                        f"{atom_id} {mol_id} 1 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                        f"{atom_id} {mol_id} {metal_type} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                     )
                     atom_id += 1
 
@@ -570,13 +640,13 @@ H   -0.8164    0.0000    0.5773
                 if symbols[i] == "O":
                     o_atoms.append(atom_id)
                     f.write(
-                        f"{atom_id} {mol_id} 2 {o_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                        f"{atom_id} {mol_id} {o_type} {o_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                     )
                     atom_id += 1
                 elif symbols[i] == "H":
                     h_atoms.append(atom_id)
                     f.write(
-                        f"{atom_id} {mol_id} 3 {h_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                        f"{atom_id} {mol_id} {h_type} {h_charge:.4f} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                     )
                     atom_id += 1
                     # Increment molecule ID after every 3 water atoms (O + 2H)

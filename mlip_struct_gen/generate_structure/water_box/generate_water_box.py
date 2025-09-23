@@ -9,6 +9,27 @@ from ..templates.water_models import create_water_xyz, get_water_density
 from .input_parameters import WaterBoxGeneratorParameters
 from .validation import validate_parameters
 
+# Element masses in g/mol
+ELEMENT_MASSES = {
+    "H": 1.008,
+    "O": 15.9994,
+    "Na": 22.98977,
+    "Cl": 35.453,
+    "K": 39.0983,
+    "Li": 6.941,
+    "Ca": 40.078,
+    "Mg": 24.305,
+    "Br": 79.904,
+    "Cs": 132.905,
+    "Pt": 195.078,
+    "Au": 196.967,
+    "Ag": 107.868,
+    "Cu": 63.546,
+    "Ni": 58.693,
+    "Pd": 106.42,
+    "Fe": 55.845,
+}
+
 
 class WaterBoxGenerator:
     """Generate water boxes using Packmol."""
@@ -438,8 +459,21 @@ class WaterBoxGenerator:
             f.write(f"{n_water} angles\n")  # 1 angle per water molecule (H-O-H)
             f.write("\n")
 
+            # Determine atom types based on elements parameter
+            if self.parameters.elements:
+                # Create mapping from element to type number
+                element_to_type = {elem: i + 1 for i, elem in enumerate(self.parameters.elements)}
+                o_type = element_to_type.get("O", len(self.parameters.elements) + 1)
+                h_type = element_to_type.get("H", len(self.parameters.elements) + 2)
+                max_atom_type = len(self.parameters.elements)
+            else:
+                # Sequential numbering: O=1, H=2
+                o_type = 1
+                h_type = 2
+                max_atom_type = 2
+
             # Types section
-            f.write("2 atom types\n")
+            f.write(f"{max_atom_type} atom types\n")
             f.write("1 bond types\n")
             f.write("1 angle types\n")
             f.write("\n")
@@ -455,8 +489,15 @@ class WaterBoxGenerator:
 
             # Masses section
             f.write("Masses\n\n")
-            f.write("1 15.9994  # O\n")
-            f.write("2 1.008    # H\n")
+            if self.parameters.elements:
+                # Write masses for all elements in order
+                for i, elem in enumerate(self.parameters.elements, 1):
+                    mass = ELEMENT_MASSES.get(elem, 1.0)
+                    f.write(f"{i} {mass:<10.4f} # {elem}\n")
+            else:
+                # Default: O=1, H=2
+                f.write("1 15.9994  # O\n")
+                f.write("2 1.008    # H\n")
             f.write("\n")
 
             # Atoms section
@@ -465,7 +506,7 @@ class WaterBoxGenerator:
             for mol_id in range(1, n_water + 1):
                 for j in range(3):  # O, H, H for each molecule
                     element, x, y, z = atoms[(mol_id - 1) * 3 + j]
-                    atom_type = 1 if element == "O" else 2
+                    atom_type = o_type if element == "O" else h_type
                     charge = charges[element]
                     f.write(
                         f"{atom_id:6d} {mol_id:6d} {atom_type:6d} {charge:10.6f} "

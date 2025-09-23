@@ -129,6 +129,15 @@ Examples:
         help="Output file format. If not specified, inferred from extension",
     )
 
+    # Elements list for LAMMPS
+    parser.add_argument(
+        "--elements",
+        type=str,
+        nargs="+",
+        metavar="ELEM",
+        help="Element order for LAMMPS atom types (e.g., Pt O H Na Cl). Only for LAMMPS format",
+    )
+
     # Packmol parameters
     parser.add_argument(
         "--tolerance",
@@ -307,6 +316,7 @@ def handle_command(args: argparse.Namespace) -> int:
             seed=args.seed,
             packmol_executable=args.packmol_executable,
             output_format=args.output_format,
+            elements=args.elements if hasattr(args, "elements") else None,
             log=args.log,
             logger=param_logger,
         )
@@ -470,6 +480,15 @@ Examples:
         type=str,
         choices=["xyz", "lammps", "poscar"],
         help="Output file format. If not specified, inferred from extension",
+    )
+
+    # Elements list for LAMMPS
+    parser.add_argument(
+        "--elements",
+        type=str,
+        nargs="+",
+        metavar="ELEM",
+        help="Element order for LAMMPS atom types (e.g., Pt O H Na Cl). Only for LAMMPS format",
     )
 
     # Packmol parameters

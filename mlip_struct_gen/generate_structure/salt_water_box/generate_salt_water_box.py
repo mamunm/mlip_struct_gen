@@ -13,6 +13,27 @@ from ..templates.water_models import create_water_xyz, get_water_density, get_wa
 from .input_parameters import SaltWaterBoxGeneratorParameters
 from .validation import validate_parameters
 
+# Element masses in g/mol
+ELEMENT_MASSES = {
+    "H": 1.008,
+    "O": 15.9994,
+    "Na": 22.98977,
+    "Cl": 35.453,
+    "K": 39.0983,
+    "Li": 6.941,
+    "Ca": 40.078,
+    "Mg": 24.305,
+    "Br": 79.904,
+    "Cs": 132.905,
+    "Pt": 195.078,
+    "Au": 196.967,
+    "Ag": 107.868,
+    "Cu": 63.546,
+    "Ni": 58.693,
+    "Pd": 106.42,
+    "Fe": 55.845,
+}
+
 if TYPE_CHECKING:
     from ...utils.logger import MLIPLogger
 
@@ -408,23 +429,39 @@ class SaltWaterBoxGenerator:
         anion_element = self.salt_model["anion"]["element"]
 
         # Determine atom types
-        atom_types = {}
-        type_id = 1
-
-        # Water atom types
-        for atom in water_model["atoms"]:
-            elem = atom["element"]
-            if elem not in atom_types:
-                atom_types[elem] = type_id
+        if self.parameters.elements:
+            # Use predefined element order
+            atom_types = {elem: i + 1 for i, elem in enumerate(self.parameters.elements)}
+            # Ensure all atoms in the structure have types
+            max_type = len(self.parameters.elements)
+            for atom in water_model["atoms"]:
+                elem = atom["element"]
+                if elem not in atom_types:
+                    max_type += 1
+                    atom_types[elem] = max_type
+            if cation_element not in atom_types:
+                max_type += 1
+                atom_types[cation_element] = max_type
+            if anion_element not in atom_types:
+                max_type += 1
+                atom_types[anion_element] = max_type
+        else:
+            # Sequential numbering
+            atom_types = {}
+            type_id = 1
+            # Water atom types
+            for atom in water_model["atoms"]:
+                elem = atom["element"]
+                if elem not in atom_types:
+                    atom_types[elem] = type_id
+                    type_id += 1
+            # Ion atom types
+            if cation_element not in atom_types:
+                atom_types[cation_element] = type_id
                 type_id += 1
-
-        # Ion atom types
-        if cation_element not in atom_types:
-            atom_types[cation_element] = type_id
-            type_id += 1
-        if anion_element not in atom_types:
-            atom_types[anion_element] = type_id
-            type_id += 1
+            if anion_element not in atom_types:
+                atom_types[anion_element] = type_id
+                type_id += 1
 
         # Calculate bonds and angles (only for water)
         water_atoms_per_molecule = len(water_model["atoms"])
@@ -461,19 +498,42 @@ class SaltWaterBoxGenerator:
 
             # Masses
             f.write("Masses\n\n")
-            for element, tid in sorted(atom_types.items(), key=lambda x: x[1]):
-                if element == "O":
-                    mass = 15.9994
-                elif element == "H":
-                    mass = 1.008
-                elif element == cation_element:
-                    mass = self.salt_model["cation"]["mass"]
-                elif element == anion_element:
-                    mass = self.salt_model["anion"]["mass"]
-                else:
-                    mass = 1.0
-
-                f.write(f"{tid} {mass}  # {element}\n")
+            if self.parameters.elements:
+                # Write masses for all defined elements
+                for i, elem in enumerate(self.parameters.elements, 1):
+                    if elem in ELEMENT_MASSES:
+                        mass = ELEMENT_MASSES[elem]
+                    elif elem == cation_element:
+                        mass = self.salt_model["cation"]["mass"]
+                    elif elem == anion_element:
+                        mass = self.salt_model["anion"]["mass"]
+                    else:
+                        mass = 1.0  # Default
+                    f.write(f"{i} {mass:<10.4f} # {elem}\n")
+                # Add any additional types not in elements list
+                for element, tid in sorted(atom_types.items(), key=lambda x: x[1]):
+                    if tid > len(self.parameters.elements):
+                        if element in ELEMENT_MASSES:
+                            mass = ELEMENT_MASSES[element]
+                        elif element == cation_element:
+                            mass = self.salt_model["cation"]["mass"]
+                        elif element == anion_element:
+                            mass = self.salt_model["anion"]["mass"]
+                        else:
+                            mass = 1.0
+                        f.write(f"{tid} {mass:<10.4f} # {element}\n")
+            else:
+                # Sequential numbering
+                for element, tid in sorted(atom_types.items(), key=lambda x: x[1]):
+                    if element in ELEMENT_MASSES:
+                        mass = ELEMENT_MASSES[element]
+                    elif element == cation_element:
+                        mass = self.salt_model["cation"]["mass"]
+                    elif element == anion_element:
+                        mass = self.salt_model["anion"]["mass"]
+                    else:
+                        mass = 1.0  # Default
+                    f.write(f"{tid} {mass}  # {element}\n")
             f.write("\n")
 
             # Atoms

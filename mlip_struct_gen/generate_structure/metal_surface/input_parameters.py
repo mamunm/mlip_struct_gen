@@ -52,6 +52,14 @@ class MetalSurfaceParameters:
             If specified, overrides format detection from file extension.
             Supported: "xyz", "vasp", "poscar", "lammps"
 
+        elements: List of elements defining atom type order for LAMMPS format.
+            When specified, atom types are assigned based on the order in this list.
+            For example: ["Pt", "O", "H", "Na", "Cl"] will assign:
+            - Pt = type 1, O = type 2, H = type 3, Na = type 4, Cl = type 5
+            Elements not in the structure will still have their masses defined.
+            If None (default), uses sequential numbering based on occurrence.
+            Only applies when output_format is "lammps".
+
         log: Enable logging output during surface generation.
             If True and logger is None, creates a new MLIPLogger instance.
 
@@ -100,5 +108,6 @@ class MetalSurfaceParameters:
     fix_bottom_layers: int = 0
     orthogonalize: bool = True
     output_format: str | None = None
+    elements: list[str] | None = None
     log: bool = False
     logger: Optional["MLIPLogger"] = None
