@@ -130,7 +130,7 @@ Output formats:
         "--output-format",
         "-f",
         type=str,
-        choices=["xyz", "lammps", "poscar"],
+        choices=["xyz", "lammps", "poscar", "lammpstrj"],
         help="Output file format (inferred from extension if not specified)",
     )
 
@@ -500,7 +500,7 @@ Output formats:
         "--output-format",
         "-f",
         type=str,
-        choices=["xyz", "lammps", "poscar"],
+        choices=["xyz", "lammps", "poscar", "lammpstrj"],
         help="Output file format (inferred from extension if not specified)",
     )
 

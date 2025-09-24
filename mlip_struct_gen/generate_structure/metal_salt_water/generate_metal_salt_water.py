@@ -480,7 +480,13 @@ H   -0.8164    0.0000    0.5773
         elif output_format in ["vasp", "poscar"]:
             self._write_poscar(output_path)
         elif output_format == "lammpstrj":
-            self._write_lammpstrj(output_path)
+            try:
+                self._write_lammpstrj(output_path)
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(f"Failed to write lammpstrj: {e}")
+                # Re-raise to see full error
+                raise
         else:  # xyz
             write(str(output_path), self.combined_system, format="xyz")
 
@@ -762,8 +768,106 @@ H   -0.8164    0.0000    0.5773
         Args:
             output_path: Output file path
         """
-        # Write in LAMMPS trajectory format using ASE
-        write(str(output_path), self.combined_system, format="lammps-dump-text")
+        if self.combined_system is None:
+            raise ValueError("Combined system not yet generated")
+
+        try:
+            # Get cell dimensions - convert to numpy array to ensure proper indexing
+            import numpy as np
+
+            cell = np.array(self.combined_system.get_cell())
+            positions = self.combined_system.get_positions()
+            symbols = self.combined_system.get_chemical_symbols()
+
+            # Debug info
+            if self.logger:
+                self.logger.debug(f"Writing lammpstrj with {len(symbols)} atoms")
+                self.logger.debug(f"Cell shape: {cell.shape}")
+                self.logger.debug(
+                    f"Cell diagonal: [{cell[0,0]:.2f}, {cell[1,1]:.2f}, {cell[2,2]:.2f}]"
+                )
+
+            # Write custom LAMMPS dump format
+            # Ensure output_path is a string, not a Path object
+            output_file = str(output_path)
+            with open(output_file, "w") as f:
+                # Header
+                f.write("ITEM: TIMESTEP\n")
+                f.write("0\n")
+                f.write("ITEM: NUMBER OF ATOMS\n")
+                f.write(f"{len(self.combined_system)}\n")
+
+                # Check if cell is orthogonal
+                is_orthogonal = (
+                    abs(cell[0, 1]) < 1e-10
+                    and abs(cell[0, 2]) < 1e-10
+                    and abs(cell[1, 0]) < 1e-10
+                    and abs(cell[1, 2]) < 1e-10
+                    and abs(cell[2, 0]) < 1e-10
+                    and abs(cell[2, 1]) < 1e-10
+                )
+
+                if is_orthogonal:
+                    # Simple orthogonal box
+                    f.write("ITEM: BOX BOUNDS pp pp pp\n")
+                    f.write(f"0.0 {float(cell[0, 0]):.6f}\n")
+                    f.write(f"0.0 {float(cell[1, 1]):.6f}\n")
+                    f.write(f"0.0 {float(cell[2, 2]):.6f}\n")
+                else:
+                    # Triclinic box - need xy xz yz tilts
+                    f.write("ITEM: BOX BOUNDS xy xz yz pp pp pp\n")
+                    xlo, xhi = 0.0, float(cell[0, 0])
+                    ylo, yhi = 0.0, float(cell[1, 1])
+                    zlo, zhi = 0.0, float(cell[2, 2])
+                    xy = float(cell[1, 0])
+                    xz = float(cell[2, 0])
+                    yz = float(cell[2, 1])
+                    f.write(f"{xlo:.6f} {xhi:.6f} {xy:.6f}\n")
+                    f.write(f"{ylo:.6f} {yhi:.6f} {xz:.6f}\n")
+                    f.write(f"{zlo:.6f} {zhi:.6f} {yz:.6f}\n")
+
+                f.write("ITEM: ATOMS id type element x y z\n")
+
+                # Create type mapping
+                # MetalSaltWaterParameters doesn't have an elements field
+                # Use sorted unique elements from the system
+                unique_elements = sorted(set(symbols))
+                type_map = {elem: i + 1 for i, elem in enumerate(unique_elements)}
+
+                # Debug type mapping
+                if self.logger:
+                    self.logger.debug(f"Type mapping: {type_map}")
+                    self.logger.debug(f"Number of positions: {len(positions)}")
+                    self.logger.debug(f"Number of symbols: {len(symbols)}")
+
+                # Write atoms - ensure we have matching data
+                if len(symbols) != len(positions):
+                    raise ValueError(
+                        f"Mismatch: {len(symbols)} symbols but {len(positions)} positions"
+                    )
+
+                # Write each atom
+                atoms_written = 0
+                for i in range(len(symbols)):
+                    symbol = symbols[i]
+                    pos = positions[i]
+                    atom_type = type_map.get(symbol, len(type_map) + 1)
+                    line = f"{i+1} {atom_type} {symbol} {float(pos[0]):.6f} {float(pos[1]):.6f} {float(pos[2]):.6f}\n"
+                    f.write(line)
+                    atoms_written += 1
+
+                f.flush()  # Force write to disk
+
+            # File is automatically closed here by context manager
+            if self.logger:
+                self.logger.success(
+                    f"Successfully wrote {atoms_written} atoms in LAMMPS trajectory format to {output_file}"
+                )
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error writing lammpstrj format: {e}")
+            raise RuntimeError(f"Failed to write LAMMPS trajectory format: {e}") from e
 
     def run(self, save_artifacts: bool = False) -> str:
         """

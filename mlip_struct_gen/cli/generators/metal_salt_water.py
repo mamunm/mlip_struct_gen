@@ -166,7 +166,7 @@ Output formats:
     parser.add_argument(
         "--output-format",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data"],
+        choices=["xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"],
         help="Output file format (overrides extension detection)",
     )
     parser.add_argument(
@@ -389,7 +389,7 @@ Output formats:
     parser.add_argument(
         "--output-format",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data"],
+        choices=["xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"],
         help="Output file format (overrides extension detection)",
     )
     parser.add_argument(

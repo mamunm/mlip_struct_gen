@@ -626,8 +626,30 @@ class WaterBoxGenerator:
         atoms.set_cell([box[0], box[1], box[2]])
         atoms.set_pbc(True)  # Set periodic boundary conditions
 
-        # Write in LAMMPS trajectory format
-        io.write(str(output_file), atoms, format="lammps-dump-text")
+        # Write custom LAMMPS dump format
+        with open(output_file, "w") as f:
+            # Header
+            f.write("ITEM: TIMESTEP\n")
+            f.write("0\n")
+            f.write("ITEM: NUMBER OF ATOMS\n")
+            f.write(f"{len(atoms)}\n")
+            f.write("ITEM: BOX BOUNDS pp pp pp\n")
+            f.write(f"0.0 {box[0]:.6f}\n")
+            f.write(f"0.0 {box[1]:.6f}\n")
+            f.write(f"0.0 {box[2]:.6f}\n")
+            f.write("ITEM: ATOMS id type element x y z\n")
+
+            # Write atoms
+            positions = atoms.get_positions()
+            symbols = atoms.get_chemical_symbols()
+
+            # Create type mapping
+            unique_elements = sorted(set(symbols), reverse=True)  # O before H
+            type_map = {elem: i + 1 for i, elem in enumerate(unique_elements)}
+
+            for i, (symbol, pos) in enumerate(zip(symbols, positions, strict=False)):
+                atom_type = type_map[symbol]
+                f.write(f"{i+1} {atom_type} {symbol} {pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}\n")
 
         if self.logger:
             self.logger.success("Successfully converted to LAMMPS trajectory format")

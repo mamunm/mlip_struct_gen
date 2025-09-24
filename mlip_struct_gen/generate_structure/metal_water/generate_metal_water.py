@@ -686,8 +686,36 @@ H   -0.8164    0.0000    0.5773
         Args:
             output_path: Output file path
         """
-        # Write in LAMMPS trajectory format using ASE
-        write(str(output_path), self.combined_system, format="lammps-dump-text")
+        # Get cell dimensions
+        cell = self.combined_system.get_cell()
+        positions = self.combined_system.get_positions()
+        symbols = self.combined_system.get_chemical_symbols()
+
+        # Write custom LAMMPS dump format
+        with open(output_path, "w") as f:
+            # Header
+            f.write("ITEM: TIMESTEP\n")
+            f.write("0\n")
+            f.write("ITEM: NUMBER OF ATOMS\n")
+            f.write(f"{len(self.combined_system)}\n")
+            f.write("ITEM: BOX BOUNDS pp pp pp\n")
+            f.write(f"0.0 {cell[0, 0]:.6f}\n")
+            f.write(f"0.0 {cell[1, 1]:.6f}\n")
+            f.write(f"0.0 {cell[2, 2]:.6f}\n")
+            f.write("ITEM: ATOMS id type element x y z\n")
+
+            # Create type mapping
+            if self.parameters.elements:
+                unique_elements = self.parameters.elements
+            else:
+                unique_elements = sorted(set(symbols))
+
+            type_map = {elem: i + 1 for i, elem in enumerate(unique_elements)}
+
+            # Write atoms
+            for i, (symbol, pos) in enumerate(zip(symbols, positions, strict=False)):
+                atom_type = type_map.get(symbol, len(type_map) + 1)
+                f.write(f"{i+1} {atom_type} {symbol} {pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}\n")
 
     def run(self, save_artifacts: bool = False) -> str:
         """
