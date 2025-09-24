@@ -37,6 +37,12 @@ Examples:
               --output-dir DATA/ \\
               --no-recursive
 
+  # Save OUTCAR parent directory locations to file
+  mlip-dpdata --input-dir . \\
+              --type-map O H \\
+              --output-dir DATA/ \\
+              --save-file-loc water.txt
+
 Output structure:
   DATA/
   ├── 32Water/          # Pure water systems
@@ -96,6 +102,12 @@ Notes:
         help="Show what would be processed without converting",
     )
 
+    parser.add_argument(
+        "--save-file-loc",
+        type=str,
+        help="File path to save the locations of OUTCAR parent directories (e.g., water.txt)",
+    )
+
     args = parser.parse_args()
     logger = get_logger()
 
@@ -123,6 +135,7 @@ Notes:
             type_map=args.type_map,
             recursive=not args.no_recursive,
             verbose=args.verbose,
+            save_file_loc=args.save_file_loc,
         )
 
         outcar_files = converter.find_outcars()
@@ -168,6 +181,7 @@ Notes:
             type_map=args.type_map,
             recursive=not args.no_recursive,
             verbose=args.verbose,
+            save_file_loc=args.save_file_loc,
         )
 
         converter.run()

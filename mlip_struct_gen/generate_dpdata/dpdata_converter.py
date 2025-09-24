@@ -25,6 +25,7 @@ class DPDataConverter:
         type_map: list[str],
         recursive: bool = True,
         verbose: bool = False,
+        save_file_loc: Path | str | None = None,
     ):
         """
         Initialize DPDataConverter.
@@ -36,12 +37,14 @@ class DPDataConverter:
                      Only systems containing subsets of these elements will be processed
             recursive: Whether to search recursively for OUTCARs
             verbose: Whether to show debug messages
+            save_file_loc: Optional file path to save OUTCAR locations
         """
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
         self.type_map = type_map
         self.recursive = recursive
         self.verbose = verbose
+        self.save_file_loc = Path(save_file_loc) if save_file_loc else None
         self.logger = get_logger()
 
         if not self.input_dir.exists():
@@ -95,6 +98,8 @@ class DPDataConverter:
         self.logger.step("Starting OUTCAR to dpdata conversion")
         self.logger.info(f"Type map: {self.type_map}")
         self.logger.info(f"Output directory: {self.output_dir}")
+        if self.save_file_loc:
+            self.logger.info(f"Saving OUTCAR locations to: {self.save_file_loc}")
 
         # Find all OUTCARs
         outcar_files = self.find_outcars()
@@ -109,6 +114,9 @@ class DPDataConverter:
         processed_count = 0
         skipped_count = 0
         failed_count = 0
+
+        # Store processed OUTCAR locations
+        processed_outcar_paths = []
 
         # Process all OUTCARs
         self.logger.step(f"Processing {len(outcar_files)} OUTCAR files")
@@ -145,6 +153,9 @@ class DPDataConverter:
                     # Add to MultiSystems
                     ms.append(system)
                     processed_count += 1
+
+                    # Store the parent directory containing the OUTCAR
+                    processed_outcar_paths.append(outcar_path.parent)
 
                 except Exception as e:
                     if self.verbose:
@@ -206,3 +217,11 @@ class DPDataConverter:
             json.dump(metadata, f, indent=2)
 
         self.logger.info(f"\nMetadata saved to: {self.output_dir / 'metadata.json'}")
+
+        # Save OUTCAR parent directory locations if requested
+        if self.save_file_loc and processed_outcar_paths:
+            with open(self.save_file_loc, "w") as f:
+                for path in processed_outcar_paths:
+                    f.write(str(path) + "\n")
+            self.logger.info(f"OUTCAR directory locations saved to: {self.save_file_loc}")
+            self.logger.info(f"  Total directories saved: {len(processed_outcar_paths)}")
