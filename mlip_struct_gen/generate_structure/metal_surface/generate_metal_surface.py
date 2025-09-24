@@ -212,6 +212,8 @@ class MetalSurfaceGenerator:
 
         if output_format == "lammps":
             self._write_lammps(slab, output_path)
+        elif output_format == "lammps/dpmd":
+            self._write_lammps_atomic(slab, output_path)
         elif output_format in ["vasp", "poscar"]:
             self._write_poscar(slab, output_path)
         elif output_format == "lammpstrj":
@@ -233,6 +235,7 @@ class MetalSurfaceGenerator:
                 "vasp": "vasp",
                 "poscar": "poscar",
                 "lammps": "lammps",
+                "lammps/dpmd": "lammps/dpmd",
                 "data": "lammps",
                 "xyz": "xyz",
                 "lammpstrj": "lammpstrj",
@@ -355,6 +358,96 @@ class MetalSurfaceGenerator:
                 # atom_id mol_id atom_type charge x y z
                 f.write(
                     f"{i+1} 1 {metal_type} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                )
+
+    def _write_lammps_atomic(self, slab: Atoms, output_path: Path) -> None:
+        """
+        Write LAMMPS data file in atomic format (no charges, bonds, angles).
+        Suitable for DPMD simulations.
+
+        Args:
+            slab: Atoms object to write
+            output_path: Output file path
+        """
+        # Get atomic data
+        positions = slab.get_positions()
+        cell = slab.get_cell()
+        metal = self.parameters.metal
+        n_atoms = len(positions)
+
+        # Get atomic mass
+        from ase.data import atomic_masses, atomic_numbers
+
+        atomic_number = atomic_numbers[metal]
+        atomic_mass = atomic_masses[atomic_number]
+
+        with open(output_path, "w") as f:
+            # Header
+            f.write(f"LAMMPS data file for {metal}(111) surface (atomic style for DPMD)\n\n")
+
+            # Counts - only atoms
+            f.write(f"{n_atoms} atoms\n\n")
+
+            # Determine atom type based on elements parameter
+            if self.parameters.elements:
+                # Use predefined element order
+                if metal in self.parameters.elements:
+                    metal_type = self.parameters.elements.index(metal) + 1
+                else:
+                    metal_type = len(self.parameters.elements) + 1
+                max_atom_type = max(len(self.parameters.elements), metal_type)
+            else:
+                metal_type = 1
+                max_atom_type = 1
+
+            # Types
+            f.write(f"{max_atom_type} atom types\n\n")
+
+            # Box dimensions
+            f.write(f"0.0 {cell[0,0]:.6f} xlo xhi\n")
+            f.write(f"0.0 {cell[1,1]:.6f} ylo yhi\n")
+            f.write(f"0.0 {cell[2,2]:.6f} zlo zhi\n")
+
+            # Check for non-orthogonal cell
+            if not self.parameters.orthogonalize:
+                # Add tilt factors if cell is not orthogonal
+                xy = cell[1, 0]
+                xz = cell[2, 0]
+                yz = cell[2, 1]
+                if abs(xy) > 1e-6 or abs(xz) > 1e-6 or abs(yz) > 1e-6:
+                    f.write(f"{xy:.6f} {xz:.6f} {yz:.6f} xy xz yz\n")
+            f.write("\n")
+
+            # Masses
+            f.write("Masses\n\n")
+            if self.parameters.elements:
+                # Write masses for all defined elements
+                for i, elem in enumerate(self.parameters.elements, 1):
+                    if elem in ELEMENT_MASSES:
+                        mass = ELEMENT_MASSES[elem]
+                    elif elem == metal:
+                        mass = atomic_mass
+                    else:
+                        # Get from ASE if not in our list
+                        try:
+                            from ase.data import atomic_masses, atomic_numbers
+
+                            mass = atomic_masses[atomic_numbers.get(elem, 1)]
+                        except (ImportError, KeyError):
+                            mass = 1.0
+                    f.write(f"{i} {mass:.4f}  # {elem}\n")
+                # Add metal if not in elements list
+                if metal_type > len(self.parameters.elements):
+                    f.write(f"{metal_type} {atomic_mass:.4f}  # {metal}\n")
+            else:
+                f.write(f"1 {atomic_mass:.4f}  # {metal}\n")
+            f.write("\n")
+
+            # Atoms - atomic style (no molecule ID, no charge)
+            f.write("Atoms # atomic\n\n")
+            for i in range(n_atoms):
+                f.write(
+                    f"{i+1} {metal_type} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                 )
 
     def _write_lammpstrj(self, slab: Atoms, output_path: Path) -> None:

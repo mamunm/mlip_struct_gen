@@ -129,7 +129,7 @@ Examples:
         "--output-format",
         "-f",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"],
+        choices=["xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"],
         help="Output file format. If not specified, inferred from extension",
     )
 
@@ -425,7 +425,7 @@ Examples:
         "--output-format",
         "-f",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"],
+        choices=["xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"],
         help="Output file format",
     )
 
