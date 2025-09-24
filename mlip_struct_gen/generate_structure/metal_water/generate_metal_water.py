@@ -407,6 +407,8 @@ H   -0.8164    0.0000    0.5773
             self._write_lammps(output_path)
         elif output_format in ["vasp", "poscar"]:
             self._write_poscar(output_path)
+        elif output_format == "lammpstrj":
+            self._write_lammpstrj(output_path)
         else:  # xyz
             write(str(output_path), self.combined_system, format="xyz")
 
@@ -426,6 +428,7 @@ H   -0.8164    0.0000    0.5773
                 "lammps": "lammps",
                 "data": "lammps",
                 "xyz": "xyz",
+                "lammpstrj": "lammpstrj",
             }
             return format_map.get(self.parameters.output_format.lower(), "lammps")
 
@@ -675,6 +678,16 @@ H   -0.8164    0.0000    0.5773
                     h2_id = h_atoms[2 * i + 1]
                     f.write(f"{angle_id} 1 {h1_id} {o_id} {h2_id}\n")
                     angle_id += 1
+
+    def _write_lammpstrj(self, output_path: Path) -> None:
+        """
+        Write LAMMPS trajectory format.
+
+        Args:
+            output_path: Output file path
+        """
+        # Write in LAMMPS trajectory format using ASE
+        write(str(output_path), self.combined_system, format="lammps-dump-text")
 
     def run(self, save_artifacts: bool = False) -> str:
         """

@@ -240,6 +240,11 @@ class WaterBoxGenerator:
                 if self.logger:
                     self.logger.step("Converting XYZ to POSCAR format")
                 self._convert_xyz_to_poscar(temp_output, output_path)
+            elif self.parameters.output_format == "lammpstrj":
+                # Convert XYZ to LAMMPS trajectory format
+                if self.logger:
+                    self.logger.step("Converting XYZ to LAMMPS trajectory format")
+                self._convert_xyz_to_lammpstrj(temp_output, output_path)
             else:
                 # Copy the XYZ file directly
                 if self.logger:
@@ -594,3 +599,37 @@ class WaterBoxGenerator:
         if self.logger:
             self.logger.success("Successfully converted to POSCAR format")
             self.logger.info(f"System: {n_oxygen} O atoms, {n_hydrogen} H atoms")
+
+    def _convert_xyz_to_lammpstrj(self, xyz_file: Path, output_file: Path) -> None:
+        """
+        Convert XYZ to LAMMPS trajectory format with cell information.
+
+        Args:
+            xyz_file: Input XYZ file
+            output_file: Output lammpstrj file
+        """
+        try:
+            from ase import io
+        except ImportError:
+            raise ImportError(
+                "ASE is required for lammpstrj format. Install with: pip install ase"
+            ) from None
+
+        # Read XYZ file
+        atoms = io.read(str(xyz_file))
+
+        # Set the cell dimensions from box_size parameter
+        # Validate box_size (at this point box_size should always be set from validation)
+        assert self.parameters.box_size is not None, "box_size must be set"
+        # After validation, box_size is always tuple[float, float, float]
+        box: tuple[float, float, float] = self.parameters.box_size  # type: ignore[assignment]
+        atoms.set_cell([box[0], box[1], box[2]])
+        atoms.set_pbc(True)  # Set periodic boundary conditions
+
+        # Write in LAMMPS trajectory format
+        io.write(str(output_file), atoms, format="lammps-dump-text")
+
+        if self.logger:
+            self.logger.success("Successfully converted to LAMMPS trajectory format")
+            self.logger.info(f"System: {len(atoms)} atoms")
+            self.logger.info(f"Box dimensions: {box[0]:.2f} x {box[1]:.2f} x {box[2]:.2f} Å")

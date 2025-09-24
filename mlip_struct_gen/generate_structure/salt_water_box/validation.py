@@ -78,6 +78,7 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
             "xyz": ".xyz",
             "lammps": ".data",
             "poscar": "",  # POSCAR doesn't use an extension
+            "lammpstrj": ".lammpstrj",
         }
         extension = format_extensions.get(parameters.output_format, ".xyz")
         parameters.output_file = str(output_path) + extension
@@ -187,7 +188,7 @@ def validate_parameters(parameters: "SaltWaterBoxGeneratorParameters") -> None:
     if not isinstance(parameters.output_format, str):
         raise TypeError("output_format must be a string")
 
-    valid_formats = ["xyz", "lammps", "poscar"]
+    valid_formats = ["xyz", "lammps", "poscar", "lammpstrj"]
     if parameters.output_format not in valid_formats:
         raise ValueError(
             f"Invalid output_format '{parameters.output_format}'. "

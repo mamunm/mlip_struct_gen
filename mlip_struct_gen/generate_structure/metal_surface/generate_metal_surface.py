@@ -214,6 +214,8 @@ class MetalSurfaceGenerator:
             self._write_lammps(slab, output_path)
         elif output_format in ["vasp", "poscar"]:
             self._write_poscar(slab, output_path)
+        elif output_format == "lammpstrj":
+            self._write_lammpstrj(slab, output_path)
         else:  # xyz
             write(str(output_path), slab, format="xyz")
 
@@ -233,6 +235,7 @@ class MetalSurfaceGenerator:
                 "lammps": "lammps",
                 "data": "lammps",
                 "xyz": "xyz",
+                "lammpstrj": "lammpstrj",
             }
             return format_map.get(self.parameters.output_format.lower(), "xyz")
 
@@ -353,6 +356,17 @@ class MetalSurfaceGenerator:
                 f.write(
                     f"{i+1} 1 {metal_type} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                 )
+
+    def _write_lammpstrj(self, slab: Atoms, output_path: Path) -> None:
+        """
+        Write LAMMPS trajectory format.
+
+        Args:
+            slab: Atoms object to write
+            output_path: Output file path
+        """
+        # Write in LAMMPS trajectory format using ASE
+        write(str(output_path), slab, format="lammps-dump-text")
 
     def run(self, save_artifacts: bool = False) -> str:
         """
