@@ -55,12 +55,12 @@ class DPDataConverter:
         Find all OUTCAR files in the input directory.
 
         Returns:
-            List of paths to OUTCAR files
+            List of paths to OUTCAR files (sorted)
         """
         if self.recursive:
-            outcar_files = list(self.input_dir.rglob("OUTCAR"))
+            outcar_files = sorted(self.input_dir.rglob("OUTCAR"))
         else:
-            outcar_files = list(self.input_dir.glob("*/OUTCAR"))
+            outcar_files = sorted(self.input_dir.glob("*/OUTCAR"))
 
         self.logger.info(f"Found {len(outcar_files)} OUTCAR files")
         return outcar_files
@@ -154,8 +154,8 @@ class DPDataConverter:
                     ms.append(system)
                     processed_count += 1
 
-                    # Store the parent directory containing the OUTCAR
-                    processed_outcar_paths.append(outcar_path.parent)
+                    # Store the absolute path of the parent directory containing the OUTCAR
+                    processed_outcar_paths.append(outcar_path.parent.resolve())
 
                 except Exception as e:
                     if self.verbose:

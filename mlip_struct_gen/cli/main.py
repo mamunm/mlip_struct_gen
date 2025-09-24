@@ -4,7 +4,7 @@
 import argparse
 import sys
 
-from .commands import convert, dpdata, generate, wannier, wannier_plot
+from .commands import convert, dpdata, generate, wannier, wannier_plot, wc_dpdata
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -72,6 +72,9 @@ For more help on specific commands:
     # Add wannier plot command
     wannier_plot.add_parser(subparsers)
 
+    # Add wannier center to dpdata command
+    wc_dpdata.add_parser(subparsers)
+
     # Future commands can be added here:
     # analyze.add_parser(subparsers)
 
@@ -108,6 +111,8 @@ def main(argv: list[str] | None = None) -> int:
         return wannier.handle_command(args)
     elif args.command == "wc-plot":
         return wannier_plot.handle_command(args)
+    elif args.command == "wc-dpdata":
+        return wc_dpdata.handle_command(args)
 
     parser.error(f"Unknown command: {args.command}")
 
