@@ -49,7 +49,7 @@ class SaltWaterBoxGeneratorParameters:
             Useful for high salt concentrations.
 
         water_model: Water model for molecular geometry.
-            Supported: "SPC/E" (default), "TIP3P", "TIP4P"
+            Supported: "SPC/E" (default), "TIP3P", "TIP4P", "SPC/Fw"
 
         tolerance: Packmol tolerance in Angstroms.
             Valid range: 0.5 - 10.0 Å (typical: 1.5 - 2.5 Å)

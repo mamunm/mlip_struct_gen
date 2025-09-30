@@ -104,7 +104,7 @@ Output formats:
         "--water-model",
         type=str,
         default="SPC/E",
-        choices=["SPC/E", "TIP3P", "TIP4P"],
+        choices=["SPC/E", "TIP3P", "TIP4P", "SPC/Fw"],
         help="Water model to use (default: SPC/E)",
     )
     parser.add_argument(
@@ -166,8 +166,14 @@ Output formats:
     parser.add_argument(
         "--output-format",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"],
+        choices=["xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"],
         help="Output file format (overrides extension detection)",
+    )
+    parser.add_argument(
+        "--elements",
+        nargs="+",
+        metavar="ELEM",
+        help="Element order for LAMMPS atom types (e.g., Pt O H Na Cl)",
     )
     parser.add_argument(
         "--save-input",
@@ -206,6 +212,7 @@ def handle_command(args: argparse.Namespace) -> int:
             seed=args.seed,
             packmol_tolerance=args.tolerance,
             output_format=args.output_format,
+            elements=args.elements if hasattr(args, "elements") else None,
         )
 
         # Validate parameters
@@ -327,7 +334,7 @@ Output formats:
         "--water-model",
         type=str,
         default="SPC/E",
-        choices=["SPC/E", "TIP3P", "TIP4P"],
+        choices=["SPC/E", "TIP3P", "TIP4P", "SPC/Fw"],
         help="Water model to use (default: SPC/E)",
     )
     parser.add_argument(
@@ -389,8 +396,14 @@ Output formats:
     parser.add_argument(
         "--output-format",
         type=str,
-        choices=["xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"],
+        choices=["xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"],
         help="Output file format (overrides extension detection)",
+    )
+    parser.add_argument(
+        "--elements",
+        nargs="+",
+        metavar="ELEM",
+        help="Element order for LAMMPS atom types (e.g., Pt O H Na Cl)",
     )
     parser.add_argument(
         "--save-input",

@@ -115,7 +115,7 @@ Examples:
         "--water-model",
         "-m",
         type=str,
-        choices=["SPC/E", "TIP3P", "TIP4P"],
+        choices=["SPC/E", "TIP3P", "TIP4P", "SPC/Fw"],
         default="SPC/E",
         help="Water model to use (default: SPC/E)",
     )
@@ -468,7 +468,7 @@ Examples:
         "--water-model",
         "-m",
         type=str,
-        choices=["SPC/E", "TIP3P", "TIP4P"],
+        choices=["SPC/E", "TIP3P", "TIP4P", "SPC/Fw"],
         default="SPC/E",
         help="Water model to use (default: SPC/E)",
     )

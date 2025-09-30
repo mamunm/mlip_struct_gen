@@ -42,4 +42,17 @@ WATER_MODELS = {
         "OH_distance": 0.9572,  # Angstroms
         "HOH_angle": 104.52,  # degrees
     },
+    "SPCFW": {
+        "geometry": {
+            "O": [0.0000, 0.0000, 0.0000],
+            "H1": [0.8660, 0.0000, 0.5574],
+            "H2": [-0.8660, 0.0000, 0.5574],
+        },
+        "charges": {
+            "O": -0.82,
+            "H": 0.41,
+        },
+        "OH_distance": 1.012,  # Angstroms
+        "HOH_angle": 113.24,  # degrees
+    },
 }

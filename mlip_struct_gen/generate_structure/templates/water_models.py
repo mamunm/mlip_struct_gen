@@ -42,6 +42,17 @@ WATER_MODELS = {
         "angles": [{"atoms": [1, 0, 2], "angle": 104.52}],
         "density": 0.997,  # g/cm³ at 25°C
     },
+    "SPC/Fw": {
+        "description": "Flexible SPC water model",
+        "atoms": [
+            {"element": "O", "position": [0.0000, 0.0000, 0.0000], "charge": -0.82},
+            {"element": "H", "position": [0.8660, 0.5574, 0.0000], "charge": 0.41},
+            {"element": "H", "position": [-0.8660, 0.5574, 0.0000], "charge": 0.41},
+        ],
+        "bonds": [{"atoms": [0, 1], "length": 1.012}, {"atoms": [0, 2], "length": 1.012}],
+        "angles": [{"atoms": [1, 0, 2], "angle": 113.24}],
+        "density": 0.997,  # g/cm³ at 25°C
+    },
 }
 
 
@@ -50,7 +61,7 @@ def get_water_model(model_name: str) -> dict[str, Any]:
     Get water model parameters.
 
     Args:
-        model_name: Name of the water model ('SPC/E', 'TIP3P', 'TIP4P')
+        model_name: Name of the water model ('SPC/E', 'TIP3P', 'TIP4P', 'SPC/Fw')
 
     Returns:
         Dictionary containing water model parameters

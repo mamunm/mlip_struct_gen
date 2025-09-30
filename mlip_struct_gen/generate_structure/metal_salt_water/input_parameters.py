@@ -63,7 +63,7 @@ class MetalSaltWaterParameters:
             File extension determines the output format.
 
         water_model: Water model geometry to use.
-            Options: "SPC/E", "TIP3P", "TIP4P"
+            Options: "SPC/E", "TIP3P", "TIP4P", "SPC/Fw"
             Default: "SPC/E"
 
         lattice_constant: Optional custom lattice constant in Angstroms.
@@ -87,6 +87,14 @@ class MetalSaltWaterParameters:
         output_format: Output file format override.
             If specified, overrides format detection from file extension.
             Supported: "xyz", "vasp", "poscar", "lammps"
+
+        elements: List of elements defining atom type order for LAMMPS format.
+            When specified, atom types are assigned based on the order in this list.
+            For example: ["Pt", "O", "H", "Na", "Cl"] will assign:
+            - Pt = type 1, O = type 2, H = type 3, Na = type 4, Cl = type 5
+            Elements not in the structure will still have their masses defined.
+            If None (default), uses sequential numbering based on occurrence.
+            Only applies when output_format is "lammps" or "lammps/dpmd".
 
         log: Enable logging output during generation.
             If True and logger is None, creates a new MLIPLogger instance.
@@ -157,5 +165,6 @@ class MetalSaltWaterParameters:
     packmol_tolerance: float = 2.0
     seed: int = 12345
     output_format: str | None = None
+    elements: list[str] | None = None
     log: bool = False
     logger: Optional["MLIPLogger"] = None

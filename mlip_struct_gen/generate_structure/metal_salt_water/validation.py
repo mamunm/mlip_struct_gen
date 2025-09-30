@@ -78,6 +78,10 @@ WATER_MODELS = {
         "OH_distance": 0.9572,  # Angstroms
         "HOH_angle": 104.52,  # degrees
     },
+    "SPC/Fw": {
+        "OH_distance": 1.012,  # Angstroms
+        "HOH_angle": 113.24,  # degrees
+    },
 }
 
 
@@ -247,7 +251,7 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
 
     # Validate output format
     if params.output_format:
-        valid_formats = {"xyz", "vasp", "poscar", "lammps", "data", "lammpstrj"}
+        valid_formats = {"xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"}
         if params.output_format.lower() not in valid_formats:
             raise ValueError(
                 f"Invalid output format '{params.output_format}'. "

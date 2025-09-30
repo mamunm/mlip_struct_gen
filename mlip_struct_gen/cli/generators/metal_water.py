@@ -83,7 +83,7 @@ Output formats:
         "--water-model",
         type=str,
         default="SPC/E",
-        choices=["SPC/E", "TIP3P", "TIP4P"],
+        choices=["SPC/E", "TIP3P", "TIP4P", "SPC/Fw"],
         help="Water model (default: SPC/E)",
     )
 
@@ -453,7 +453,7 @@ Output formats:
         "--water-model",
         type=str,
         default="SPC/E",
-        choices=["SPC/E", "TIP3P", "TIP4P"],
+        choices=["SPC/E", "TIP3P", "TIP4P", "SPC/Fw"],
         help="Water model (default: SPC/E)",
     )
 

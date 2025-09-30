@@ -53,6 +53,10 @@ WATER_MODELS = {
         "OH_distance": 0.9572,  # Angstroms
         "HOH_angle": 104.52,  # degrees
     },
+    "SPC/Fw": {
+        "OH_distance": 1.012,  # Angstroms
+        "HOH_angle": 113.24,  # degrees
+    },
 }
 
 

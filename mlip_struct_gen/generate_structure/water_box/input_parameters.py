@@ -32,6 +32,7 @@ class WaterBoxGeneratorParameters:
             - "SPC/E": Simple Point Charge/Extended model (default)
             - "TIP3P": Transferable Intermolecular Potential 3-Point model
             - "TIP4P": Transferable Intermolecular Potential 4-Point model
+            - "SPC/Fw": Flexible SPC water model
 
         n_water: Number of water molecules to pack. If None, calculated
             automatically from box_size and density. Can be combined with

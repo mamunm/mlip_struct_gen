@@ -43,7 +43,7 @@ class MetalWaterParameters:
             File extension determines the output format.
 
         water_model: Water model geometry to use.
-            Options: "SPC/E", "TIP3P", "TIP4P"
+            Options: "SPC/E", "TIP3P", "TIP4P", "SPC/Fw"
             Default: "SPC/E"
 
         lattice_constant: Optional custom lattice constant in Angstroms.
