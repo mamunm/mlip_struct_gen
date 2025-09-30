@@ -260,6 +260,7 @@ uv.lock
 .ruff_cache/
 .claude/
 experiments/
+CODEBASE_MEMORY.md
 
 # Documentation build
 docs/_build/
