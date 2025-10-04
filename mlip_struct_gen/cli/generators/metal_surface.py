@@ -429,6 +429,15 @@ Examples:
         help="Output file format",
     )
 
+    # Elements list for LAMMPS
+    parser.add_argument(
+        "--elements",
+        type=str,
+        nargs="+",
+        metavar="ELEM",
+        help="Element order for LAMMPS atom types (e.g., Pt O H Na Cl). Only for LAMMPS format",
+    )
+
     # Options
     parser.add_argument(
         "--log",
