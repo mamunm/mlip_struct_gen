@@ -1,5 +1,6 @@
 """Structure generation module."""
 
+from .graphene_water import GrapheneWaterGenerator, GrapheneWaterParameters
 from .metal_salt_water import MetalSaltWaterGenerator, MetalSaltWaterParameters
 from .metal_surface import MetalSurfaceGenerator, MetalSurfaceParameters
 from .metal_water import MetalWaterGenerator, MetalWaterParameters
@@ -18,6 +19,8 @@ __all__ = [
     "MetalWaterParameters",
     "MetalSaltWaterGenerator",
     "MetalSaltWaterParameters",
+    "GrapheneWaterGenerator",
+    "GrapheneWaterParameters",
     "save_structure",
     "load_structure",
 ]

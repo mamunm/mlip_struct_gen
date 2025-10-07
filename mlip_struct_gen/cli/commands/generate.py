@@ -2,7 +2,14 @@
 
 import argparse
 
-from ..generators import metal_salt_water, metal_surface, metal_water, salt_water_box, water_box
+from ..generators import (
+    graphene_water,
+    metal_salt_water,
+    metal_surface,
+    metal_water,
+    salt_water_box,
+    water_box,
+)
 
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -36,6 +43,9 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
     # Add metal-salt-water subcommand
     metal_salt_water.add_parser(structure_subparsers)
 
+    # Add graphene-water subcommand
+    graphene_water.add_parser(structure_subparsers)
+
     # Future structure types can be added here:
     # polymer.add_parser(structure_subparsers)
 
@@ -60,6 +70,8 @@ def handle_command(args: argparse.Namespace) -> int:
         return metal_water.handle_command(args)
     elif args.structure_type == "metal-salt-water":
         return metal_salt_water.handle_command(args)
+    elif args.structure_type == "graphene-water":
+        return graphene_water.handle_command(args)
     # Future structure types:
     #     return interface.handle_command(args)
     else:
