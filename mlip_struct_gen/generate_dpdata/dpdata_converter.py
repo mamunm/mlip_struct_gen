@@ -1,8 +1,10 @@
-"""Convert VASP OUTCARs to dpdata format using dpdata MultiSystems."""
+"""Convert VASP OUTCARs to dpdata format with manual data handling to ensure consistency."""
 
+import json
 from pathlib import Path
 
 import dpdata
+import numpy as np
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -15,8 +17,157 @@ from rich.progress import (
 from mlip_struct_gen.utils.logger import get_logger
 
 
+class CompositionData:
+    """Store data for a unique composition."""
+
+    def __init__(self, composition: str, type_map: list[str]):
+        self.composition = composition
+        self.type_map = type_map
+
+        # Data storage - each element is from one OUTCAR
+        self.coords: list[np.ndarray] = []  # List of (n_frames, 3*n_atoms) arrays
+        self.energies: list[np.ndarray] = []  # List of (n_frames, 1) arrays
+        self.forces: list[np.ndarray] = []  # List of (n_frames, 3*n_atoms) arrays
+        self.cells: list[np.ndarray] = []  # List of (n_frames, 9) arrays
+        self.virials: list[np.ndarray] = []  # List of (n_frames, 9) arrays
+
+        # Atom information - should be same for all systems with this composition
+        self.atom_types: np.ndarray | None = None  # Atom type indices
+        self.atom_numbs: list[int] | None = None  # Number of each atom type
+        self.n_atoms: int = 0
+        self.total_frames: int = 0
+
+        # Track frame counts for consistency
+        self.frame_counts: list[int] = []
+
+    def add_system(self, system_data: dict, source_path: Path) -> bool:
+        """
+        Add data from a parsed system to this composition.
+
+        Args:
+            system_data: Data dictionary from dpdata.LabeledSystem
+            source_path: Path to source OUTCAR for logging
+
+        Returns:
+            True if successfully added, False otherwise
+        """
+        # Check frame consistency within this system
+        n_frames = len(system_data["coords"])
+        n_frames_energy = len(system_data["energies"])
+        n_frames_force = len(system_data["forces"])
+        n_frames_cell = len(system_data["cells"])
+
+        if not (n_frames == n_frames_energy == n_frames_force == n_frames_cell):
+            logger = get_logger()
+            logger.warning(
+                f"Frame inconsistency in {source_path}: "
+                f"coords={n_frames}, energy={n_frames_energy}, "
+                f"force={n_frames_force}, cell={n_frames_cell}"
+            )
+            return False
+
+        # Get atom information
+        n_atoms = sum(system_data["atom_numbs"])
+        atom_types = system_data["atom_types"]
+
+        # Initialize atom information on first system
+        if self.atom_types is None:
+            self.atom_types = atom_types
+            self.atom_numbs = system_data["atom_numbs"]
+            self.n_atoms = n_atoms
+        else:
+            # Verify consistency with previous systems
+            if not np.array_equal(self.atom_types, atom_types):
+                logger = get_logger()
+                logger.warning(f"Atom type mismatch in {source_path}")
+                return False
+
+        # Reshape data to dpdata format
+        coords_flat = system_data["coords"].reshape(n_frames, -1)  # (n_frames, 3*n_atoms)
+        energies_reshaped = system_data["energies"].reshape(n_frames, 1)  # (n_frames, 1)
+        forces_flat = system_data["forces"].reshape(n_frames, -1)  # (n_frames, 3*n_atoms)
+        cells_flat = system_data["cells"].reshape(n_frames, 9)  # (n_frames, 9)
+
+        # Add to storage
+        self.coords.append(coords_flat)
+        self.energies.append(energies_reshaped)
+        self.forces.append(forces_flat)
+        self.cells.append(cells_flat)
+
+        # Handle virials if present
+        if "virials" in system_data and system_data["virials"] is not None:
+            virials_flat = system_data["virials"].reshape(n_frames, 9)
+            self.virials.append(virials_flat)
+
+        # Update counters
+        self.frame_counts.append(n_frames)
+        self.total_frames += n_frames
+
+        return True
+
+    def save_to_disk(self, output_dir: Path, verbose: bool = False) -> None:
+        """
+        Save this composition's data to disk in dpdata format.
+
+        Args:
+            output_dir: Base output directory
+            verbose: Whether to print debug information
+        """
+        logger = get_logger()
+
+        # Create directory structure
+        comp_dir = output_dir / self.composition
+        set_dir = comp_dir / "set.000"
+        set_dir.mkdir(parents=True, exist_ok=True)
+
+        # Concatenate all data
+        if len(self.coords) == 0:
+            logger.warning(f"No data to save for {self.composition}")
+            return
+
+        # Stack all frames
+        all_coords = np.vstack(self.coords) if self.coords else np.empty((0, 3 * self.n_atoms))
+        all_energies = np.vstack(self.energies) if self.energies else np.empty((0, 1))
+        all_forces = np.vstack(self.forces) if self.forces else np.empty((0, 3 * self.n_atoms))
+        all_cells = np.vstack(self.cells) if self.cells else np.empty((0, 9))
+
+        # Verify shapes
+        assert all_coords.shape == (self.total_frames, 3 * self.n_atoms)
+        assert all_energies.shape == (self.total_frames, 1)
+        assert all_forces.shape == (self.total_frames, 3 * self.n_atoms)
+        assert all_cells.shape == (self.total_frames, 9)
+
+        # Save npy files in set.000
+        np.save(set_dir / "coord.npy", all_coords)
+        np.save(set_dir / "energy.npy", all_energies)
+        np.save(set_dir / "force.npy", all_forces)
+        np.save(set_dir / "box.npy", all_cells)
+
+        # Save virials if present
+        if self.virials:
+            all_virials = np.vstack(self.virials)
+            assert all_virials.shape == (self.total_frames, 9)
+            np.save(set_dir / "virial.npy", all_virials)
+
+        # Write type_map.raw at composition level
+        with open(comp_dir / "type_map.raw", "w") as f:
+            for element in self.type_map:
+                f.write(f"{element}\n")
+
+        # Write type.raw - atom types for all atoms in order
+        with open(comp_dir / "type.raw", "w") as f:
+            for atom_type in self.atom_types:
+                f.write(f"{atom_type}\n")
+
+        if verbose:
+            logger.info(
+                f"  Saved {self.composition}: {self.total_frames} frames, "
+                f"{self.n_atoms} atoms, {len(self.frame_counts)} systems"
+            )
+
+
 class DPDataConverter:
-    """Convert VASP OUTCARs to dpdata format using dpdata MultiSystems."""
+    """Convert VASP OUTCARs to dpdata format with manual data handling."""
 
     def __init__(
         self,
@@ -49,6 +200,9 @@ class DPDataConverter:
 
         if not self.input_dir.exists():
             raise ValueError(f"Input directory does not exist: {self.input_dir}")
+
+        # Storage for composition data
+        self.composition_data: dict[str, CompositionData] = {}
 
     def find_outcars(self) -> list[Path]:
         """
@@ -93,11 +247,33 @@ class DPDataConverter:
                 self.logger.debug(f"Error checking elements: {e}")
             return False
 
+    def get_composition_string(self, system: dpdata.LabeledSystem) -> str:
+        """
+        Get composition string with zero-padding for missing elements.
+
+        Args:
+            system: dpdata LabeledSystem with type_map applied
+
+        Returns:
+            Composition string like "Cu48O32H64Na0Cl0"
+        """
+        data = system.data
+        atom_numbs = data["atom_numbs"]
+
+        # Build composition string using type_map order
+        composition_parts = []
+        for i, element in enumerate(self.type_map):
+            count = atom_numbs[i] if i < len(atom_numbs) else 0
+            composition_parts.append(f"{element}{count}")
+
+        return "".join(composition_parts)
+
     def run(self) -> None:
         """Run the conversion process."""
-        self.logger.step("Starting OUTCAR to dpdata conversion")
+        self.logger.step("Starting OUTCAR to dpdata conversion (Manual Mode)")
         self.logger.info(f"Type map: {self.type_map}")
         self.logger.info(f"Output directory: {self.output_dir}")
+
         if self.save_file_loc:
             self.logger.info(f"Saving OUTCAR locations to: {self.save_file_loc}")
 
@@ -107,13 +283,11 @@ class DPDataConverter:
             self.logger.error("No OUTCAR files found")
             return
 
-        # Initialize MultiSystems
-        ms = dpdata.MultiSystems()
-
         # Process counters
         processed_count = 0
         skipped_count = 0
         failed_count = 0
+        inconsistent_count = 0
 
         # Store processed OUTCAR locations
         processed_outcar_paths = []
@@ -150,12 +324,27 @@ class DPDataConverter:
                     # Apply type_map to ensure consistent ordering
                     system.apply_type_map(self.type_map)
 
-                    # Add to MultiSystems
-                    ms.append(system)
-                    processed_count += 1
+                    # Get composition string
+                    composition = self.get_composition_string(system)
 
-                    # Store the absolute path of the parent directory containing the OUTCAR
-                    processed_outcar_paths.append(outcar_path.parent.resolve())
+                    # Create or get composition data container
+                    if composition not in self.composition_data:
+                        self.composition_data[composition] = CompositionData(
+                            composition, self.type_map
+                        )
+
+                    # Add system data to composition
+                    success = self.composition_data[composition].add_system(
+                        system.data, outcar_path
+                    )
+
+                    if success:
+                        processed_count += 1
+                        processed_outcar_paths.append(outcar_path.parent.resolve())
+                    else:
+                        inconsistent_count += 1
+                        if self.verbose:
+                            self.logger.debug(f"Skipped inconsistent system: {outcar_path}")
 
                 except Exception as e:
                     if self.verbose:
@@ -164,27 +353,29 @@ class DPDataConverter:
 
                 progress.advance(task)
 
-        # Summary
+        # Summary of processing
         self.logger.info("\nProcessing summary:")
         self.logger.info(f"  Processed: {processed_count} systems")
         self.logger.info(f"  Skipped (wrong elements): {skipped_count} systems")
+        self.logger.info(f"  Skipped (inconsistent frames): {inconsistent_count} systems")
         self.logger.info(f"  Failed: {failed_count} systems")
 
         if processed_count == 0:
             self.logger.error("No systems were successfully processed")
             return
 
-        # Save MultiSystems
+        # Save all composition data
         self.logger.step("Saving to dpdata format")
-        self.logger.info(
-            f"MultiSystems contains {len(ms.systems)} unique compositions with {sum(len(s) for s in ms.systems)} total frames"
-        )
+        self.logger.info(f"Found {len(self.composition_data)} unique compositions")
 
         # Create output directory if needed
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save in deepmd/npy format
-        ms.to_deepmd_npy(str(self.output_dir))
+        # Save each composition
+        total_frames = 0
+        for _, comp_data in self.composition_data.items():
+            comp_data.save_to_disk(self.output_dir, verbose=self.verbose)
+            total_frames += comp_data.total_frames
 
         self.logger.success("\nConversion completed successfully!")
         self.logger.info(f"Output saved to: {self.output_dir}")
@@ -192,25 +383,36 @@ class DPDataConverter:
         # Show what was created
         self.logger.info("\nGenerated compositions:")
         for comp_dir in sorted(self.output_dir.iterdir()):
-            if comp_dir.is_dir():
-                # Try to get frame count
-                try:
-                    test_sys = dpdata.LabeledSystem(str(comp_dir), fmt="deepmd/npy")
-                    n_frames = len(test_sys)
-                    n_atoms = test_sys.get_natoms()
+            if comp_dir.is_dir() and (comp_dir / "set.000").exists():
+                # Get frame count from saved data
+                coord_file = comp_dir / "set.000" / "coord.npy"
+                if coord_file.exists():
+                    n_frames = np.load(coord_file).shape[0]
+                    type_raw = comp_dir / "type.raw"
+                    if type_raw.exists():
+                        with open(type_raw) as f:
+                            n_atoms = len(f.readlines())
+                    else:
+                        n_atoms = "?"
                     self.logger.info(f"  {comp_dir.name}: {n_frames} frames, {n_atoms} atoms")
-                except Exception:
-                    self.logger.info(f"  {comp_dir.name}/")
 
         # Save metadata
-        import json
-
         metadata = {
             "type_map": self.type_map,
             "total_systems_processed": processed_count,
             "systems_skipped": skipped_count,
             "systems_failed": failed_count,
-            "unique_compositions": len(ms.systems),
+            "systems_inconsistent": inconsistent_count,
+            "unique_compositions": len(self.composition_data),
+            "total_frames": int(total_frames),  # Convert numpy int to Python int
+            "compositions": {
+                comp: {
+                    "n_frames": int(comp_data.total_frames),  # Convert to Python int
+                    "n_atoms": int(comp_data.n_atoms),  # Convert to Python int
+                    "n_systems": len(comp_data.frame_counts),
+                }
+                for comp, comp_data in self.composition_data.items()
+            },
         }
 
         with open(self.output_dir / "metadata.json", "w") as f:

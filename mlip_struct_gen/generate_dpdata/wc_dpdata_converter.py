@@ -16,6 +16,10 @@ from rich.progress import (
 )
 
 from mlip_struct_gen.utils.logger import get_logger
+from mlip_struct_gen.wannier_centroid.compute_wannier_centroid import (
+    compute_wannier_centroid,
+    save_results,
+)
 
 
 class WCDPDataConverter:
@@ -333,36 +337,6 @@ class WCDPDataConverter:
         np.save(comp_dir / "atomic_dipole.npy", atomic_dipoles_array)
         self.logger.info(f"  Saved atomic_dipole.npy with shape {atomic_dipoles_array.shape}")
 
-        # If we have structure data, save it too
-        if coords_list and cells_list:
-            coords_array = np.array(coords_list).reshape(len(coords_list), -1, 3)
-            cells_array = np.array(cells_list).reshape(len(cells_list), 3, 3)
-
-            np.save(comp_dir / "coord.npy", coords_array)
-            np.save(comp_dir / "box.npy", cells_array)
-
-            # Create type array based on composition
-            if self.type_map:
-                # Parse composition to get counts
-                import re
-
-                pattern = r"([A-Z][a-z]?)(\d+)"
-                matches = re.findall(pattern, composition)
-
-                type_array = []
-                for element, count in matches:
-                    if element in self.type_map:
-                        type_idx = self.type_map.index(element)
-                        type_array.extend([type_idx] * int(count))
-
-                type_array = np.array(type_array)
-                np.save(comp_dir / "type.npy", np.tile(type_array, (len(coords_list), 1)))
-
-                # Save type_map
-                with open(comp_dir / "type_map.raw", "w") as f:
-                    for element in self.type_map:
-                        f.write(f"{element}\n")
-
     def run(self) -> None:
         """Run the conversion process."""
         self.logger.step("Starting Wannier center to dpdata conversion")
@@ -388,6 +362,61 @@ class WCDPDataConverter:
         # Process all directories
         self.logger.step(f"Processing {len(directories)} directories")
 
+        # First pass: check for missing wc_out.npy and compute if needed
+        directories_needing_wc = []
+        for directory in directories:
+            wc_file = directory / "wc_out.npy"
+            if not wc_file.exists():
+                poscar_file = directory / "POSCAR"
+                wannier_file = directory / "wannier90_centres.xyz"
+
+                if poscar_file.exists() and wannier_file.exists():
+                    directories_needing_wc.append(directory)
+
+        if directories_needing_wc:
+            self.logger.info(
+                f"\nFound {len(directories_needing_wc)} directories needing Wannier centroid computation"
+            )
+            self.logger.step("Computing missing Wannier centroids")
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TimeRemainingColumn(),
+                transient=True,
+            ) as progress:
+                compute_task = progress.add_task(
+                    "[green]Computing Wannier centroids...", total=len(directories_needing_wc)
+                )
+
+                for directory in directories_needing_wc:
+                    progress.update(
+                        compute_task,
+                        description=f"[green]Computing WC for: {directory.name}",
+                    )
+
+                    try:
+                        # Compute wannier centroids
+                        results = compute_wannier_centroid(directory, verbose=False)
+                        # Save results
+                        save_results(results, directory)
+
+                        if self.verbose:
+                            self.logger.debug(f"Computed Wannier centroids for {directory}")
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to compute Wannier centroids for {directory}: {e}"
+                        )
+
+                    progress.advance(compute_task)
+
+            self.logger.info("Wannier centroid computation completed")
+
+        # Now process all directories with the conversion
+        self.logger.step(f"Converting {len(directories)} directories to dpdata format")
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -404,9 +433,13 @@ class WCDPDataConverter:
                     description=f"[cyan]Processing: {directory.name}",
                 )
 
-                # Load wannier data
+                # Load wannier data (should exist now if computation was successful)
                 wc_data = self.load_wannier_data(directory)
                 if wc_data is None:
+                    if self.verbose:
+                        self.logger.debug(
+                            f"No wc_out.npy found for {directory} after computation attempt"
+                        )
                     skipped_count += 1
                     progress.advance(task)
                     continue
