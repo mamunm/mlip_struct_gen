@@ -2,7 +2,7 @@
 
 import argparse
 
-from ..converters import trajectory_to_poscar
+from ..converters import mlip_sr_lr, trajectory_to_poscar
 
 
 def add_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -24,6 +24,9 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
     # Add trajectory-to-poscar subcommand
     trajectory_to_poscar.add_parser(convert_subparsers)
 
+    # Add mlip-sr-lr subcommand
+    mlip_sr_lr.add_parser(convert_subparsers)
+
     # Future conversion types can be added here:
     # poscar_to_xyz.add_parser(convert_subparsers)
     # lammps_to_xyz.add_parser(convert_subparsers)
@@ -41,6 +44,8 @@ def handle_command(args: argparse.Namespace) -> int:
     """
     if args.conversion_type == "trajectory-to-poscar":
         return trajectory_to_poscar.handle_command(args)
+    elif args.conversion_type == "mlip-sr-lr":
+        return mlip_sr_lr.handle_command(args)
     # Future conversion types:
     # elif args.conversion_type == "poscar-to-xyz":
     #     return poscar_to_xyz.handle_command(args)
