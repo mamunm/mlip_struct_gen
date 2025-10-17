@@ -27,6 +27,9 @@ dependencies = [
     "ase>=3.22.0",
     "rich>=13.0.0",
     "dpdata>=0.2.24",
+    "matplotlib>=3.7.0",
+    "plotly>=5.14.0",
+    "pybind11>=2.11.0",
 ]
 
 [project.scripts]
@@ -48,6 +51,8 @@ mlip-compute-wc = "mlip_struct_gen.cli.commands.wannier:main"
 mlip-wc-plot = "mlip_struct_gen.cli.commands.wannier_plot:main"
 mlip-wc-dpdata = "mlip_struct_gen.cli.commands.wc_dpdata:main"
 mlip-dpdata = "mlip_struct_gen.cli.dpdata_ms:main"
+mlip-analyze = "mlip_struct_gen.cli.commands.analyze:main"
+mlip-analyze-rdf = "mlip_struct_gen.cli.commands.analyze:main_rdf"
 
 [project.optional-dependencies]
 dev = [
@@ -55,17 +60,31 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "pre-commit>=3.4.0",
+    "scikit-build-core>=0.8.0",
 ]
 all = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "pre-commit>=3.4.0",
+    "scikit-build-core>=0.8.0",
 ]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = [
+    "scikit-build-core>=0.8.0",
+    "pybind11>=2.11.0",
+]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build.cmake]
+# Directory where CMakeLists.txt is located
+source-dir = "mlip_struct_gen/analysis/cpp"
+build-type = "Release"
+
+[tool.scikit-build.wheel]
+install-dir = "mlip_struct_gen/analysis"
+packages = ["mlip_struct_gen"]
 
 [tool.ruff]
 line-length = 100
