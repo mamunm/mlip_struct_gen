@@ -350,33 +350,31 @@ class LAMMPSDataProcessor:
         all_types.update(atom[1] for atom in duplicated_atoms)
         return all_types
 
-    def get_masses(self, all_types: set) -> dict[int, float]:
+    def get_masses(self) -> dict[int, float]:
         """Get masses for all atom types based on the type map."""
         masses = {}
 
-        # Map original types from type_map
+        # Map ALL types from type_map (regardless of whether they exist in data)
         for i, element in enumerate(self.type_map):
             type_id = i + 1
-            if type_id in all_types:
-                if element in ELEMENT_MASSES:
-                    masses[type_id] = ELEMENT_MASSES[element]
-                else:
-                    self.logger.warning(f"Unknown element {element}, using default mass 1.0")
-                    masses[type_id] = 1.0
+            if element in ELEMENT_MASSES:
+                masses[type_id] = ELEMENT_MASSES[element]
+            else:
+                self.logger.warning(f"Unknown element {element}, using default mass 1.0")
+                masses[type_id] = 1.0
 
-        # Handle duplicated types (inherit mass from original)
+        # Handle ALL duplicated types (inherit mass from original)
         for orig, new, _ in self.duplication_config:
-            if new in all_types:
-                if orig in masses:
-                    masses[new] = masses[orig]
+            if orig in masses:
+                masses[new] = masses[orig]
+            else:
+                # Try to get from type_map
+                if orig <= len(self.type_map):
+                    element = self.type_map[orig - 1]
+                    masses[new] = ELEMENT_MASSES.get(element, 1.0)
                 else:
-                    # Try to get from type_map
-                    if orig <= len(self.type_map):
-                        element = self.type_map[orig - 1]
-                        masses[new] = ELEMENT_MASSES.get(element, 1.0)
-                    else:
-                        masses[new] = 1.0
-                        self.logger.warning(f"Could not determine mass for type {new}, using 1.0")
+                    masses[new] = 1.0
+                    self.logger.warning(f"Could not determine mass for type {new}, using 1.0")
 
         return masses
 
@@ -396,15 +394,18 @@ class LAMMPSDataProcessor:
         total_atoms = len(all_atoms)
         total_bonds = len(bonds)
 
-        # Get all unique atom types and bond types
+        # Get masses and charges for ALL types in type_map plus duplicates
+        masses = self.get_masses()
+
+        # Get all unique atom types for charges
         all_types = self.get_all_atom_types(duplicated_atoms)
-        total_atom_types = len(all_types)
+        charges = self.get_charges(all_types)
+
+        # Total atom types includes all from type_map plus duplicated types
+        total_atom_types = len(masses)
 
         bond_types = {bond[1] for bond in bonds} if bonds else set()
         total_bond_types = len(bond_types) if bond_types else 0
-
-        masses = self.get_masses(all_types)
-        charges = self.get_charges(all_types)
 
         with open(self.output_file, "w") as f:
             # Write header
@@ -535,7 +536,7 @@ class LAMMPSDataProcessor:
         self.logger.success("Processing complete!")
         self.logger.info(f"Total atoms: {len(self.atoms) + len(duplicated_atoms)}")
         self.logger.info(f"Total bonds: {len(bonds)}")
-        self.logger.info(f"Total atom types: {len(all_types)}")
+        self.logger.info(f"Total atom types: {len(self.get_masses())}")
         if bonds:
             self.logger.info(f"Total bond types: {len({bond[1] for bond in bonds})}")
 
