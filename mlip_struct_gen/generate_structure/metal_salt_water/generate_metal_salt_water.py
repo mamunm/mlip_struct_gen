@@ -125,33 +125,52 @@ class MetalSaltWaterGenerator:
             RuntimeError: If generation fails
         """
         try:
-            # Use temporary directory for intermediate files
-            with tempfile.TemporaryDirectory() as tmpdir:
-                # Build metal surface
-                self._build_metal_surface()
-
-                # Generate salt-water solution
-                self._generate_salt_water_solution(tmpdir)
-
-                # Combine metal and solution
-                self._combine_metal_solution()
-
-                # Adjust vacuum
-                self._adjust_vacuum()
-
-                # Write output file
-                output_path = self._write_output()
-
+            # Determine working directory for intermediate files
+            if self.parameters.save_artifacts:
+                # Create artifacts directory alongside output file
+                output_path = Path(self.parameters.output_file)
+                artifacts_dir = output_path.parent / f"{output_path.stem}_artifacts"
+                artifacts_dir.mkdir(parents=True, exist_ok=True)
+                tmpdir = str(artifacts_dir)
                 if self.logger:
-                    self.logger.info(f"Successfully generated: {output_path}")
+                    self.logger.info(f"Saving artifacts to: {artifacts_dir}")
+                self._run_generation(tmpdir)
+            else:
+                # Use temporary directory that gets cleaned up
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self._run_generation(tmpdir)
 
-                return str(output_path)
+            if self.logger:
+                self.logger.info(f"Successfully generated: {self.parameters.output_file}")
+
+            return str(self.parameters.output_file)
 
         except Exception as e:
             error_msg = f"Failed to generate metal-salt-water interface: {e}"
             if self.logger:
                 self.logger.error(error_msg)
             raise RuntimeError(error_msg) from None
+
+    def _run_generation(self, tmpdir: str) -> None:
+        """Run the actual generation steps.
+
+        Args:
+            tmpdir: Directory for intermediate files
+        """
+        # Build metal surface
+        self._build_metal_surface()
+
+        # Generate salt-water solution
+        self._generate_salt_water_solution(tmpdir)
+
+        # Combine metal and solution
+        self._combine_metal_solution()
+
+        # Adjust vacuum
+        self._adjust_vacuum()
+
+        # Write output file
+        self._write_output()
 
     def _build_metal_surface(self) -> None:
         """Build the FCC(111) metal surface."""
@@ -288,6 +307,11 @@ class MetalSaltWaterGenerator:
         solution_z_min = metal_cell_z + self.parameters.gap + margin_z_bottom
         solution_z_max = metal_cell_z + self.parameters.gap + solution_height - margin_z_top
 
+        # Calculate restricted z-boundaries for salt ions based on no_salt_zone
+        solution_box_height = solution_z_max - solution_z_min
+        salt_z_min = solution_z_min + (self.parameters.no_salt_zone * solution_box_height)
+        salt_z_max = solution_z_max - (self.parameters.no_salt_zone * solution_box_height)
+
         # Create molecule files
         water_xyz_path = os.path.join(tmpdir, "water_molecule.xyz")
         self._create_water_molecule_file(water_xyz_path)
@@ -323,18 +347,18 @@ end structure
             self._create_ion_file(self.salt_info["cation"], cation_xyz_path)
             self._create_ion_file(self.salt_info["anion"], anion_xyz_path)
 
-            # Add ions to PACKMOL input
+            # Add ions to PACKMOL input (using restricted z-range based on no_salt_zone)
             packmol_input += f"""
 # Cations
 structure {cation_xyz_path}
   number {n_cations}
-  inside box {margin_xy} {margin_xy} {solution_z_min} {solution_x + margin_xy} {solution_y + margin_xy} {solution_z_max}
+  inside box {margin_xy} {margin_xy} {salt_z_min} {solution_x + margin_xy} {solution_y + margin_xy} {salt_z_max}
 end structure
 
 # Anions
 structure {anion_xyz_path}
   number {n_anions}
-  inside box {margin_xy} {margin_xy} {solution_z_min} {solution_x + margin_xy} {solution_y + margin_xy} {solution_z_max}
+  inside box {margin_xy} {margin_xy} {salt_z_min} {solution_x + margin_xy} {solution_y + margin_xy} {salt_z_max}
 end structure
 """
 
@@ -351,6 +375,11 @@ end structure
                 self.logger.info(
                     f"  Ions: {n_cations} {self.salt_info['cation']}+ and {n_anions} {self.salt_info['anion']}-"
                 )
+                if self.parameters.no_salt_zone > 0:
+                    self.logger.info(
+                        f"  Ion exclusion zone: {self.parameters.no_salt_zone:.1%} from top/bottom "
+                        f"(ions in z=[{salt_z_min:.2f}, {salt_z_max:.2f}])"
+                    )
 
         # Run PACKMOL
         self._run_packmol(packmol_input_path, solution_output_path)

@@ -84,6 +84,18 @@ class MetalSaltWaterParameters:
         seed: Random seed for reproducible salt-water configurations.
             Default: 12345
 
+        no_salt_zone: Fraction of the salt-water box height (0.0 to <0.5) where
+            salt ions are excluded at both top and bottom. Creates symmetric
+            exclusion zones. For example, no_salt_zone=0.2 means ions can only
+            be placed in the middle 60% of the box (excluding bottom 20% and top 20%).
+            Must be less than 0.5 to leave room for ions.
+            Default: 0.2
+
+        save_artifacts: If True, save intermediate files (PACKMOL input, molecule
+            files, solution box, etc.) to a directory named "<output_file>_artifacts"
+            alongside the output file. Useful for debugging or reproducing results.
+            Default: False
+
         output_format: Output file format override.
             If specified, overrides format detection from file extension.
             Supported: "xyz", "vasp", "poscar", "lammps"
@@ -164,6 +176,8 @@ class MetalSaltWaterParameters:
     packmol_executable: str = "packmol"
     packmol_tolerance: float = 2.0
     seed: int = 12345
+    no_salt_zone: float = 0.2
+    save_artifacts: bool = False
     output_format: str | None = None
     elements: list[str] | None = None
     log: bool = False

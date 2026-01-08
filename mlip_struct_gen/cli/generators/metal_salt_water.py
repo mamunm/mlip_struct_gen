@@ -164,6 +164,12 @@ Output formats:
         help="Minimum distance between molecules in Angstroms (default: 2.0)",
     )
     parser.add_argument(
+        "--no-salt-zone",
+        type=float,
+        default=0.2,
+        help="Fraction of salt-water box height (0.0 to <0.5) to exclude ions from top and bottom (default: 0.2)",
+    )
+    parser.add_argument(
         "--output-format",
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"],
@@ -179,6 +185,11 @@ Output formats:
         "--save-input",
         action="store_true",
         help="Save input parameters to input_params.json",
+    )
+    parser.add_argument(
+        "--save-artifacts",
+        action="store_true",
+        help="Save intermediate files (PACKMOL input, molecule files) to <output>_artifacts/",
     )
 
     parser.set_defaults(func=handle_command)
@@ -211,6 +222,8 @@ def handle_command(args: argparse.Namespace) -> int:
             fix_bottom_layers=args.fix_bottom_layers,
             seed=args.seed,
             packmol_tolerance=args.tolerance,
+            no_salt_zone=args.no_salt_zone,
+            save_artifacts=getattr(args, "save_artifacts", False),
             output_format=args.output_format,
             elements=args.elements if hasattr(args, "elements") else None,
         )
@@ -394,6 +407,12 @@ Output formats:
         help="Minimum distance between molecules in Angstroms (default: 2.0)",
     )
     parser.add_argument(
+        "--no-salt-zone",
+        type=float,
+        default=0.2,
+        help="Fraction of salt-water box height (0.0 to <0.5) to exclude ions from top and bottom (default: 0.2)",
+    )
+    parser.add_argument(
         "--output-format",
         type=str,
         choices=["xyz", "vasp", "poscar", "lammps", "lammps/dpmd", "data", "lammpstrj"],
@@ -409,6 +428,11 @@ Output formats:
         "--save-input",
         action="store_true",
         help="Save input parameters to input_params.json",
+    )
+    parser.add_argument(
+        "--save-artifacts",
+        action="store_true",
+        help="Save intermediate files (PACKMOL input, molecule files) to <output>_artifacts/",
     )
 
     args = parser.parse_args()
