@@ -3,6 +3,8 @@
 import argparse
 
 from ..generators import (
+    constrained_salt_water_box,
+    constrained_water_box,
     graphene_water,
     metal_salt_water,
     metal_surface,
@@ -46,8 +48,11 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
     # Add graphene-water subcommand
     graphene_water.add_parser(structure_subparsers)
 
-    # Future structure types can be added here:
-    # polymer.add_parser(structure_subparsers)
+    # Add constrained-water subcommand
+    constrained_water_box.add_parser(structure_subparsers)
+
+    # Add constrained-salt-water subcommand
+    constrained_salt_water_box.add_parser(structure_subparsers)
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -72,8 +77,10 @@ def handle_command(args: argparse.Namespace) -> int:
         return metal_salt_water.handle_command(args)
     elif args.structure_type == "graphene-water":
         return graphene_water.handle_command(args)
-    # Future structure types:
-    #     return interface.handle_command(args)
+    elif args.structure_type == "constrained-water":
+        return constrained_water_box.handle_command(args)
+    elif args.structure_type == "constrained-salt-water":
+        return constrained_salt_water_box.handle_command(args)
     else:
         print(f"Unknown structure type: {args.structure_type}")
         return 1
