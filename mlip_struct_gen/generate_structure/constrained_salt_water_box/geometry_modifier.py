@@ -58,7 +58,7 @@ def find_ions(atoms: Atoms, ion_elements: list[str]) -> dict[str, list[int]]:
 
 def find_ion_water_pairs(
     atoms: Atoms,
-    ion_element: str,
+    _ion_element: str,
     water_element: str,
     molecules: list[list[int]],
     ion_indices: list[int],
