@@ -14,6 +14,7 @@ variable        TAU_P           equal {tau_p}
 units           metal
 boundary        p p p
 atom_style      atomic
+atom_modify     map array
 
 neighbor        1.0 bin
 box             tilt large
@@ -25,6 +26,8 @@ change_box      all triclinic
 pair_style      deepmd {models} out_freq ${{THERMO_FREQ}} out_file model_devi.out
 pair_coeff      * *
 
+{frozen_groups}
+
 {constraints}
 
 thermo_style    custom step temp pe ke etotal press vol lx ly lz xy xz yz
@@ -35,8 +38,8 @@ dump            1 all custom ${{DUMP_FREQ}} traj.lammpstrj id type element x y z
 dump_modify     1 element {element_list}
 
 {minimization}
-velocity        all create ${{TEMP}} {seed}
-fix             1 all npt temp ${{TEMP}} ${{TEMP}} ${{TAU_T}} iso ${{PRES}} ${{PRES}} ${{TAU_P}}
+velocity        {velocity_group} create ${{TEMP}} {seed}
+{ensemble_fix}
 
 timestep        {timestep}
 run             ${{NSTEPS}}
@@ -64,6 +67,37 @@ ELEMENT_MASSES = {
 }
 
 
+def generate_frozen_groups(constrained_atoms: dict) -> tuple[str, bool]:
+    """
+    Generate LAMMPS group commands for frozen atoms.
+
+    Args:
+        constrained_atoms: Dict with "frozen_atoms" set
+
+    Returns:
+        Tuple of (LAMMPS group commands as string, has_frozen_atoms bool)
+    """
+    frozen_atoms = constrained_atoms.get("frozen_atoms", set())
+
+    if not frozen_atoms:
+        return "# No frozen atoms", False
+
+    # Sort atom IDs for consistent output
+    sorted_ids = sorted(frozen_atoms)
+    id_list = " ".join(str(i) for i in sorted_ids)
+
+    lines = [
+        f"# Frozen atoms group ({len(sorted_ids)} atoms)",
+        f"group frozen id {id_list}",
+        "group mobile subtract all frozen",
+        "",
+        "# Freeze constrained atoms in place",
+        "fix freeze frozen setforce 0.0 0.0 0.0",
+    ]
+
+    return "\n".join(lines), True
+
+
 def generate_constraint_fixes(
     constrained_atoms: dict,
     constraint_type: str = "rigid",
@@ -89,10 +123,10 @@ def generate_constraint_fixes(
 
     lines = [f"# Constraints (type: {constraint_type}, K={k_dist})"]
 
-    # Distance constraints (O-H bonds and O-O intermolecular)
+    # Distance constraints (O-H bonds only - O-O now uses freeze)
     dist_constraints = constrained_atoms.get("distance", [])
     if dist_constraints:
-        lines.append("# Distance constraints")
+        lines.append("# Distance constraints (O-H bonds)")
         for i, (id1, id2, dist) in enumerate(dist_constraints):
             lines.append(
                 f"fix constrain_dist_{i} all restrain bond {id1} {id2} {k_dist} {k_dist} {dist}"
@@ -109,7 +143,7 @@ def generate_constraint_fixes(
             )
 
     if not dist_constraints and not angle_constraints:
-        return "# No constraints applied"
+        return "# No bond/angle constraints applied"
 
     return "\n".join(lines)
 
@@ -131,6 +165,23 @@ def generate_mass_lines(elements: list[str]) -> str:
     return "\n".join(lines)
 
 
+def generate_ensemble_fix(ensemble: str, group: str) -> str:
+    """
+    Generate LAMMPS fix command for the ensemble.
+
+    Args:
+        ensemble: "npt" or "nvt"
+        group: Group name to apply fix to ("all" or "mobile")
+
+    Returns:
+        LAMMPS fix command as string
+    """
+    if ensemble.lower() == "nvt":
+        return f"fix             1 {group} nvt temp ${{TEMP}} ${{TEMP}} ${{TAU_T}}"
+    else:  # npt
+        return f"fix             1 {group} npt temp ${{TEMP}} ${{TEMP}} ${{TAU_T}} iso ${{PRES}} ${{PRES}} ${{TAU_P}}"
+
+
 def generate_lammps_input(
     data_file: str,
     model_files: list[str],
@@ -139,6 +190,7 @@ def generate_lammps_input(
     constraint_type: str = "rigid",
     harmonic_k: float = 100.0,
     minimize: bool = False,
+    ensemble: str = "npt",
     elements: list[str] | None = None,
     **kwargs,
 ) -> str:
@@ -149,10 +201,14 @@ def generate_lammps_input(
         data_file: LAMMPS data file name
         model_files: List of DeepMD model files
         constrained_atoms: Dict with constraint info for fix generation
+            - "distance": list of (id1, id2, dist) for O-H bond constraints
+            - "angle": list of (id1, id2, id3, angle) for angle constraints
+            - "frozen_atoms": set of atom IDs to freeze in place
         output_file: Output file path
         constraint_type: "rigid" or "harmonic"
         harmonic_k: Spring constant for harmonic constraints
         minimize: Add energy minimization before MD
+        ensemble: "npt" or "nvt"
         elements: List of element symbols for type mapping (default: ["O", "H"])
         **kwargs: MD parameters (nsteps, temp, pres, etc.)
 
@@ -169,8 +225,18 @@ def generate_lammps_input(
     # Generate model paths
     models = " ".join(model_files)
 
-    # Generate constraint fixes
+    # Generate frozen groups (for O-O constraints)
+    frozen_groups, has_frozen = generate_frozen_groups(constrained_atoms)
+
+    # Generate constraint fixes (for O-H bonds and angles)
     constraints = generate_constraint_fixes(constrained_atoms, constraint_type, harmonic_k)
+
+    # Determine which group to use for velocity and ensemble fix
+    velocity_group = "mobile" if has_frozen else "all"
+    ensemble_group = "mobile" if has_frozen else "all"
+
+    # Generate ensemble fix command
+    ensemble_fix = generate_ensemble_fix(ensemble, ensemble_group)
 
     # Generate minimization block
     if minimize:
@@ -198,9 +264,12 @@ minimize        1.0e-6 1.0e-8 1000 10000
         data_file=data_file,
         models=models,
         masses=masses,
+        frozen_groups=frozen_groups,
         constraints=constraints,
         minimization=minimization,
         element_list=element_list,
+        velocity_group=velocity_group,
+        ensemble_fix=ensemble_fix,
     )
 
     with open(output_file, "w") as f:

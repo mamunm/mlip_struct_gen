@@ -72,7 +72,10 @@ class ConstrainedMetalSaltWaterGenerator:
         self.salt_info = get_salt_info(self.parameters.salt_type)
 
         # Track constrained atoms for LAMMPS fix generation
-        self.constrained_atoms: dict = {"distance": [], "angle": []}
+        # "distance": O-H bond constraints (use harmonic restraints)
+        # "angle": H-O-H angle constraints (use harmonic restraints)
+        # "frozen_atoms": atoms to freeze in place (for O-O, metal-water, metal-ion, ion-water, ion-ion)
+        self.constrained_atoms: dict = {"distance": [], "angle": [], "frozen_atoms": set()}
 
         if self.logger:
             self.logger.info("Initializing ConstrainedMetalSaltWaterGenerator")
@@ -190,7 +193,7 @@ class ConstrainedMetalSaltWaterGenerator:
     def _apply_metal_water_distance_constraint(
         self, atoms, molecules, surface_metals, constraint
     ) -> None:
-        """Apply metal-water distance constraint (metal fixed, water moves)."""
+        """Apply metal-water distance constraint - freeze metal and water molecule."""
         target_dist = constraint.distance
         water_element = constraint.water_element
 
@@ -212,7 +215,7 @@ class ConstrainedMetalSaltWaterGenerator:
         if self.logger:
             self.logger.info(
                 f"Applying {self.parameters.metal}-{water_element} distance constraint: "
-                f"{len(pairs)} pairs to {target_dist} A"
+                f"{len(pairs)} pairs to {target_dist} A (freezing atoms)"
             )
 
         for metal_idx, water_idx, mol_idx in pairs:
@@ -225,8 +228,10 @@ class ConstrainedMetalSaltWaterGenerator:
             )
             new_dist = get_current_distance(atoms, metal_idx, water_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["distance"].append((metal_idx + 1, water_idx + 1, target_dist))
+            # Freeze metal atom and entire water molecule - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(metal_idx + 1)
+            for atom_idx in mol_indices:
+                self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -237,7 +242,7 @@ class ConstrainedMetalSaltWaterGenerator:
     def _apply_metal_water_angle_constraint(
         self, atoms, molecules, surface_metals, constraint
     ) -> None:
-        """Apply metal-water angle constraint (Metal-O-H)."""
+        """Apply metal-water angle constraint (Metal-O-H) - freeze metal and water molecule."""
         target_angle = constraint.angle
 
         if not surface_metals:
@@ -253,7 +258,7 @@ class ConstrainedMetalSaltWaterGenerator:
         if self.logger:
             self.logger.info(
                 f"Applying {self.parameters.metal}-O-H angle constraint: "
-                f"{len(angles)} angles to {target_angle} deg"
+                f"{len(angles)} angles to {target_angle} deg (freezing atoms)"
             )
 
         for metal_idx, o_idx, h_idx, mol_idx, h_num in angles:
@@ -264,10 +269,10 @@ class ConstrainedMetalSaltWaterGenerator:
             modify_metal_water_angle(atoms, metal_idx, o_idx, h_idx, mol_indices, target_angle)
             new_angle = get_current_angle(atoms, metal_idx, o_idx, h_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["angle"].append(
-                (metal_idx + 1, o_idx + 1, h_idx + 1, target_angle)
-            )
+            # Freeze metal atom and entire water molecule - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(metal_idx + 1)
+            for atom_idx in mol_indices:
+                self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -276,7 +281,7 @@ class ConstrainedMetalSaltWaterGenerator:
                 )
 
     def _apply_metal_ion_distance_constraint(self, atoms, surface_metals, constraint) -> None:
-        """Apply metal-ion distance constraint (metal fixed, ion moves)."""
+        """Apply metal-ion distance constraint - freeze both metal and ion."""
         target_dist = constraint.distance
         ion_element = constraint.ion_element
 
@@ -297,7 +302,7 @@ class ConstrainedMetalSaltWaterGenerator:
         if self.logger:
             self.logger.info(
                 f"Applying {self.parameters.metal}-{ion_element} distance constraint: "
-                f"{len(pairs)} pairs to {target_dist} A"
+                f"{len(pairs)} pairs to {target_dist} A (freezing atoms)"
             )
 
         for metal_idx, ion_idx in pairs:
@@ -307,8 +312,9 @@ class ConstrainedMetalSaltWaterGenerator:
             move_ion_to_metal_distance(atoms, metal_idx, ion_idx, target_dist)
             new_dist = get_current_distance(atoms, metal_idx, ion_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["distance"].append((metal_idx + 1, ion_idx + 1, target_dist))
+            # Freeze both metal and ion - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(metal_idx + 1)
+            self.constrained_atoms["frozen_atoms"].add(ion_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -376,12 +382,12 @@ class ConstrainedMetalSaltWaterGenerator:
                         f"  Molecule {mol_idx}: O-H {old_dist:.3f} -> {new_dist:.3f} A"
                     )
         else:
-            # O-O intermolecular constraint
+            # O-O intermolecular constraint - freeze entire water molecules
             pairs = find_nearest_oo_pairs(atoms, molecules, constraint.count)
 
             if self.logger:
                 self.logger.info(
-                    f"Applying O-O distance constraint: {len(pairs)} pairs to {target_dist} A"
+                    f"Applying O-O distance constraint: {len(pairs)} pairs to {target_dist} A (freezing atoms)"
                 )
 
             for mol1_idx, mol2_idx in pairs:
@@ -393,8 +399,11 @@ class ConstrainedMetalSaltWaterGenerator:
                 modify_intermolecular_distance(atoms, mol1, mol2, target_dist)
                 new_dist = get_current_distance(atoms, o1_idx, o2_idx)
 
-                # Store for LAMMPS fix (1-indexed)
-                self.constrained_atoms["distance"].append((o1_idx + 1, o2_idx + 1, target_dist))
+                # Freeze both water molecules (O and H atoms) - 1-indexed for LAMMPS
+                for atom_idx in mol1:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
+                for atom_idx in mol2:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
                 if self.logger:
                     self.logger.debug(
@@ -402,7 +411,7 @@ class ConstrainedMetalSaltWaterGenerator:
                     )
 
     def _apply_ion_water_distance_constraint(self, atoms, molecules, constraint) -> None:
-        """Apply ion-water distance constraint."""
+        """Apply ion-water distance constraint - freeze ion and water molecule."""
         elem1, elem2 = constraint.element1, constraint.element2
         target_dist = constraint.distance
 
@@ -420,7 +429,7 @@ class ConstrainedMetalSaltWaterGenerator:
         if self.logger:
             self.logger.info(
                 f"Applying {ion_element}-{water_element} distance constraint: "
-                f"{len(pairs)} pairs to {target_dist} A"
+                f"{len(pairs)} pairs to {target_dist} A (freezing atoms)"
             )
 
         for ion_idx, water_idx, mol_idx in pairs:
@@ -431,8 +440,10 @@ class ConstrainedMetalSaltWaterGenerator:
             move_water_to_ion_distance(atoms, ion_idx, water_idx, mol_indices, target_dist)
             new_dist = get_current_distance(atoms, ion_idx, water_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["distance"].append((ion_idx + 1, water_idx + 1, target_dist))
+            # Freeze ion and entire water molecule - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(ion_idx + 1)
+            for atom_idx in mol_indices:
+                self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -441,7 +452,7 @@ class ConstrainedMetalSaltWaterGenerator:
                 )
 
     def _apply_ion_ion_distance_constraint(self, atoms, constraint) -> None:
-        """Apply ion-ion distance constraint."""
+        """Apply ion-ion distance constraint - freeze both ions."""
         elem1, elem2 = constraint.element1, constraint.element2
         target_dist = constraint.distance
 
@@ -451,7 +462,7 @@ class ConstrainedMetalSaltWaterGenerator:
         if self.logger:
             self.logger.info(
                 f"Applying {elem1}-{elem2} distance constraint: "
-                f"{len(pairs)} pairs to {target_dist} A"
+                f"{len(pairs)} pairs to {target_dist} A (freezing atoms)"
             )
 
         for ion1_idx, ion2_idx in pairs:
@@ -461,8 +472,9 @@ class ConstrainedMetalSaltWaterGenerator:
             move_ion_to_ion_distance(atoms, ion1_idx, ion2_idx, target_dist)
             new_dist = get_current_distance(atoms, ion1_idx, ion2_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["distance"].append((ion1_idx + 1, ion2_idx + 1, target_dist))
+            # Freeze both ions - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(ion1_idx + 1)
+            self.constrained_atoms["frozen_atoms"].add(ion2_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -520,6 +532,7 @@ class ConstrainedMetalSaltWaterGenerator:
             constraint_type=self.parameters.constraint_type,
             harmonic_k=self.parameters.harmonic_k,
             minimize=self.parameters.minimize,
+            ensemble=self.parameters.ensemble,
             nsteps=self.parameters.nsteps,
             thermo_freq=self.parameters.thermo_freq,
             dump_freq=self.parameters.dump_freq,

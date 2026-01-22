@@ -57,8 +57,8 @@ def validate_parameters(parameters: "WaterBoxGeneratorParameters") -> None:
         if any(s > 1000.0 for s in parameters.box_size):
             raise ValueError("Box dimensions too large (>1000 Å). Check units.")
 
-        if any(s < 5.0 for s in parameters.box_size):
-            raise ValueError("Box dimensions too small (<5 Å). Minimum recommended size is 5 Å.")
+        if any(s < 4.0 for s in parameters.box_size):
+            raise ValueError("Box dimensions too small (<4 Å). Minimum recommended size is 4 Å.")
 
     # Output file validation
     if not isinstance(parameters.output_file, str):

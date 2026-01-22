@@ -59,8 +59,8 @@ def validate_parameters(parameters: "ConstrainedWaterBoxParameters") -> None:
 
         if any(s > 1000.0 for s in parameters.box_size):
             raise ValueError("Box dimensions too large (>1000 A)")
-        if any(s < 5.0 for s in parameters.box_size):
-            raise ValueError("Box dimensions too small (<5 A)")
+        if any(s < 4.0 for s in parameters.box_size):
+            raise ValueError("Box dimensions too small (<4 A)")
 
     # Output file validation
     if not isinstance(parameters.output_file, str):

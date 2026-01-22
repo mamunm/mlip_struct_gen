@@ -121,6 +121,7 @@ class ConstrainedWaterBoxParameters:
     constraint_type: str = "rigid"  # "rigid" (K=10000) or "harmonic"
     harmonic_k: float = 50.0  # Spring constant for harmonic constraints
     minimize: bool = False  # Add energy minimization before MD
+    ensemble: str = "npt"  # "npt" or "nvt"
     nsteps: int = 1000
     temp: float = 300.0
     pres: float = 1.0

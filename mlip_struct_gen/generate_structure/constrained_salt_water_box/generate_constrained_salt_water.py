@@ -63,7 +63,10 @@ class ConstrainedSaltWaterBoxGenerator:
         self.anion_element = self.salt_model["anion"]["element"]
 
         # Track constrained atoms for LAMMPS fix generation
-        self.constrained_atoms: dict = {"distance": [], "angle": []}
+        # "distance": O-H bond constraints (use harmonic restraints)
+        # "angle": H-O-H angle constraints (use harmonic restraints)
+        # "frozen_atoms": atoms to freeze in place (for O-O, ion-water, ion-ion constraints)
+        self.constrained_atoms: dict = {"distance": [], "angle": [], "frozen_atoms": set()}
 
         if self.logger:
             self.logger.info("Initializing ConstrainedSaltWaterBoxGenerator")
@@ -208,12 +211,12 @@ class ConstrainedSaltWaterBoxGenerator:
                         f"  Molecule {mol_idx}: O-H {old_dist:.3f} -> {new_dist:.3f} A"
                     )
         else:
-            # O-O intermolecular constraint
+            # O-O intermolecular constraint - freeze entire water molecules
             pairs = find_nearest_oo_pairs(atoms, molecules, constraint.count)
 
             if self.logger:
                 self.logger.info(
-                    f"Applying O-O distance constraint: {len(pairs)} pairs to {target_dist} A"
+                    f"Applying O-O distance constraint: {len(pairs)} pairs to {target_dist} A (freezing atoms)"
                 )
 
             for mol1_idx, mol2_idx in pairs:
@@ -225,8 +228,11 @@ class ConstrainedSaltWaterBoxGenerator:
                 modify_intermolecular_distance(atoms, mol1, mol2, target_dist)
                 new_dist = get_current_distance(atoms, o1_idx, o2_idx)
 
-                # Store for LAMMPS fix (1-indexed)
-                self.constrained_atoms["distance"].append((o1_idx + 1, o2_idx + 1, target_dist))
+                # Freeze both water molecules (O and H atoms) - 1-indexed for LAMMPS
+                for atom_idx in mol1:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
+                for atom_idx in mol2:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
                 if self.logger:
                     self.logger.debug(
@@ -234,7 +240,7 @@ class ConstrainedSaltWaterBoxGenerator:
                     )
 
     def _apply_ion_water_constraint(self, atoms, molecules, ions, elem1, elem2, constraint) -> None:
-        """Apply ion-water distance constraint."""
+        """Apply ion-water distance constraint - freeze ion and water molecule."""
         target_dist = constraint.distance
 
         # Determine which is ion and which is water element
@@ -261,18 +267,21 @@ class ConstrainedSaltWaterBoxGenerator:
         if self.logger:
             self.logger.info(
                 f"Applying {ion_element}-{water_element} distance constraint: "
-                f"{len(pairs)} pairs to {target_dist} A"
+                f"{len(pairs)} pairs to {target_dist} A (freezing atoms)"
             )
 
-        for ion_idx, water_idx, _mol_idx in pairs:
+        for ion_idx, water_idx, mol_idx in pairs:
             old_dist = get_current_distance(atoms, ion_idx, water_idx)
 
             # Move ion towards/away from water atom
             move_ion_to_distance(atoms, water_idx, ion_idx, target_dist)
             new_dist = get_current_distance(atoms, ion_idx, water_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["distance"].append((ion_idx + 1, water_idx + 1, target_dist))
+            # Freeze ion and entire water molecule (O and H atoms) - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(ion_idx + 1)
+            mol_indices = molecules[mol_idx]
+            for atom_idx in mol_indices:
+                self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -281,7 +290,7 @@ class ConstrainedSaltWaterBoxGenerator:
                 )
 
     def _apply_ion_ion_constraint(self, atoms, ions, elem1, elem2, constraint) -> None:
-        """Apply ion-ion distance constraint."""
+        """Apply ion-ion distance constraint - freeze both ions."""
         target_dist = constraint.distance
 
         indices1 = ions.get(elem1, [])
@@ -297,7 +306,7 @@ class ConstrainedSaltWaterBoxGenerator:
 
         if self.logger:
             self.logger.info(
-                f"Applying {elem1}-{elem2} distance constraint: {len(pairs)} pairs to {target_dist} A"
+                f"Applying {elem1}-{elem2} distance constraint: {len(pairs)} pairs to {target_dist} A (freezing atoms)"
             )
 
         for idx1, idx2 in pairs:
@@ -307,8 +316,9 @@ class ConstrainedSaltWaterBoxGenerator:
             move_ion_to_distance(atoms, idx1, idx2, target_dist)
             new_dist = get_current_distance(atoms, idx1, idx2)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["distance"].append((idx1 + 1, idx2 + 1, target_dist))
+            # Freeze both ions - 1-indexed for LAMMPS
+            self.constrained_atoms["frozen_atoms"].add(idx1 + 1)
+            self.constrained_atoms["frozen_atoms"].add(idx2 + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -365,6 +375,7 @@ class ConstrainedSaltWaterBoxGenerator:
             constraint_type=self.parameters.constraint_type,
             harmonic_k=self.parameters.harmonic_k,
             minimize=self.parameters.minimize,
+            ensemble=self.parameters.ensemble,
             nsteps=self.parameters.nsteps,
             thermo_freq=self.parameters.thermo_freq,
             dump_freq=self.parameters.dump_freq,

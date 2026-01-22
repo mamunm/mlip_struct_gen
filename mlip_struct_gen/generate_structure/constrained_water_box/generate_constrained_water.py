@@ -53,7 +53,10 @@ class ConstrainedWaterBoxGenerator:
                     self.logger = None
 
         # Track constrained atoms for LAMMPS fix generation
-        self.constrained_atoms: dict = {"distance": [], "angle": []}
+        # "distance": O-H bond constraints (use harmonic restraints)
+        # "angle": H-O-H angle constraints (use harmonic restraints)
+        # "frozen_atoms": atoms to freeze in place (for O-O constraints)
+        self.constrained_atoms: dict = {"distance": [], "angle": [], "frozen_atoms": set()}
 
         if self.logger:
             self.logger.info("Initializing ConstrainedWaterBoxGenerator")
@@ -167,12 +170,12 @@ class ConstrainedWaterBoxGenerator:
                         f"  Molecule {mol_idx}: O-H {old_dist:.3f} -> {new_dist:.3f} A"
                     )
         else:
-            # O-O intermolecular constraint
+            # O-O intermolecular constraint - freeze entire water molecules
             pairs = find_nearest_oo_pairs(atoms, molecules, constraint.count)
 
             if self.logger:
                 self.logger.info(
-                    f"Applying O-O distance constraint: {len(pairs)} pairs to {target_dist} A"
+                    f"Applying O-O distance constraint: {len(pairs)} pairs to {target_dist} A (freezing atoms)"
                 )
 
             for mol1_idx, mol2_idx in pairs:
@@ -184,8 +187,11 @@ class ConstrainedWaterBoxGenerator:
                 modify_intermolecular_distance(atoms, mol1, mol2, target_dist)
                 new_dist = get_current_distance(atoms, o1_idx, o2_idx)
 
-                # Store for LAMMPS fix (1-indexed)
-                self.constrained_atoms["distance"].append((o1_idx + 1, o2_idx + 1, target_dist))
+                # Freeze both water molecules (O and H atoms) - 1-indexed for LAMMPS
+                for atom_idx in mol1:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
+                for atom_idx in mol2:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
                 if self.logger:
                     self.logger.debug(
@@ -241,6 +247,7 @@ class ConstrainedWaterBoxGenerator:
             constraint_type=self.parameters.constraint_type,
             harmonic_k=self.parameters.harmonic_k,
             minimize=self.parameters.minimize,
+            ensemble=self.parameters.ensemble,
             elements=self.parameters.elements,
             nsteps=self.parameters.nsteps,
             thermo_freq=self.parameters.thermo_freq,

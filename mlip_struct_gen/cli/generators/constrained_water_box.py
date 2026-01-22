@@ -137,6 +137,13 @@ Examples:
     )
 
     # MD parameters
+    parser.add_argument(
+        "--ensemble",
+        type=str,
+        choices=["nvt", "npt"],
+        default="npt",
+        help="MD ensemble: nvt or npt (default: npt)",
+    )
     parser.add_argument("--nsteps", type=int, default=1000, help="Number of MD steps")
     parser.add_argument("--temp", type=float, default=300.0, help="Temperature in K")
     parser.add_argument("--pres", type=float, default=1.0, help="Pressure in bar")
@@ -259,6 +266,7 @@ def handle_command(args: argparse.Namespace) -> int:
             for c in args.constrain_angle:
                 logger.info(f"  Angle constraint: H-O-H x{c[0]} -> {c[1]} deg")
         logger.info(f"  Constraint type: {args.constraint_type}")
+        logger.info(f"  Ensemble: {args.ensemble}")
         if args.minimize:
             logger.info("  Minimization: enabled")
         return 0
@@ -282,6 +290,7 @@ def handle_command(args: argparse.Namespace) -> int:
             constraint_type=args.constraint_type,
             harmonic_k=args.harmonic_k,
             minimize=args.minimize,
+            ensemble=args.ensemble,
             nsteps=args.nsteps,
             temp=args.temp,
             pres=args.pres,
@@ -359,6 +368,7 @@ def main() -> int:
     parser.add_argument("--minimize", action="store_true")
 
     # MD parameters
+    parser.add_argument("--ensemble", type=str, choices=["nvt", "npt"], default="npt")
     parser.add_argument("--nsteps", type=int, default=1000)
     parser.add_argument("--temp", type=float, default=300.0)
     parser.add_argument("--pres", type=float, default=1.0)
