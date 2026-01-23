@@ -40,8 +40,6 @@ class ConstrainedSaltWaterBoxParameters:
         distance_constraints: List of DistanceConstraint objects.
         angle_constraints: List of AngleConstraint objects.
         constraint_seed: Seed for random selection of constrained pairs. Default: 42
-        constraint_type: "rigid" (K=10000) or "harmonic" (user K)
-        harmonic_k: Spring constant for harmonic constraints.
         minimize: Add energy minimization before MD.
         nsteps: MD steps for LAMMPS. Default: 1000
         temp: Temperature in K. Default: 300.0
@@ -104,8 +102,6 @@ class ConstrainedSaltWaterBoxParameters:
     distance_constraints: list[DistanceConstraint] = field(default_factory=list)
     angle_constraints: list[AngleConstraint] = field(default_factory=list)
     constraint_seed: int = 42
-    constraint_type: str = "rigid"  # "rigid" (K=10000) or "harmonic"
-    harmonic_k: float = 50.0  # Spring constant for harmonic constraints
     minimize: bool = False  # Add energy minimization before MD
     ensemble: str = "npt"  # "npt" or "nvt"
     nsteps: int = 1000

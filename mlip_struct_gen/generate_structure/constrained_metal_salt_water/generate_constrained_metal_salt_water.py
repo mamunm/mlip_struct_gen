@@ -72,10 +72,8 @@ class ConstrainedMetalSaltWaterGenerator:
         self.salt_info = get_salt_info(self.parameters.salt_type)
 
         # Track constrained atoms for LAMMPS fix generation
-        # "distance": O-H bond constraints (use harmonic restraints)
-        # "angle": H-O-H angle constraints (use harmonic restraints)
-        # "frozen_atoms": atoms to freeze in place (for O-O, metal-water, metal-ion, ion-water, ion-ion)
-        self.constrained_atoms: dict = {"distance": [], "angle": [], "frozen_atoms": set()}
+        # All constrained atoms are frozen in place using fix setforce 0 0 0
+        self.constrained_atoms: dict = {"frozen_atoms": set()}
 
         if self.logger:
             self.logger.info("Initializing ConstrainedMetalSaltWaterGenerator")
@@ -366,7 +364,7 @@ class ConstrainedMetalSaltWaterGenerator:
 
             if self.logger:
                 self.logger.info(
-                    f"Applying O-H distance constraint: {len(selected_bonds)} bonds to {target_dist} A"
+                    f"Applying O-H distance constraint: {len(selected_bonds)} bonds to {target_dist} A (freezing atoms)"
                 )
 
             for o_idx, h_idx, mol_idx in selected_bonds:
@@ -374,8 +372,10 @@ class ConstrainedMetalSaltWaterGenerator:
                 modify_bond_distance(atoms, o_idx, h_idx, target_dist)
                 new_dist = get_current_distance(atoms, o_idx, h_idx)
 
-                # Store for LAMMPS fix (1-indexed)
-                self.constrained_atoms["distance"].append((o_idx + 1, h_idx + 1, target_dist))
+                # Freeze entire water molecule - 1-indexed for LAMMPS
+                mol_indices = molecules[mol_idx]
+                for atom_idx in mol_indices:
+                    self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
                 if self.logger:
                     self.logger.debug(
@@ -495,7 +495,7 @@ class ConstrainedMetalSaltWaterGenerator:
 
         if self.logger:
             self.logger.info(
-                f"Applying H-O-H angle constraint: {len(selected_angles)} angles to {target_angle} deg"
+                f"Applying H-O-H angle constraint: {len(selected_angles)} angles to {target_angle} deg (freezing atoms)"
             )
 
         for h1_idx, o_idx, h2_idx, mol_idx in selected_angles:
@@ -503,10 +503,10 @@ class ConstrainedMetalSaltWaterGenerator:
             modify_angle(atoms, h1_idx, o_idx, h2_idx, target_angle)
             new_angle = get_current_angle(atoms, h1_idx, o_idx, h2_idx)
 
-            # Store for LAMMPS fix (1-indexed)
-            self.constrained_atoms["angle"].append(
-                (h1_idx + 1, o_idx + 1, h2_idx + 1, target_angle)
-            )
+            # Freeze entire water molecule - 1-indexed for LAMMPS
+            mol_indices = molecules[mol_idx]
+            for atom_idx in mol_indices:
+                self.constrained_atoms["frozen_atoms"].add(atom_idx + 1)
 
             if self.logger:
                 self.logger.debug(
@@ -529,8 +529,6 @@ class ConstrainedMetalSaltWaterGenerator:
             constrained_atoms=self.constrained_atoms,
             elements=self.parameters.elements,
             output_file=str(lammps_input_file),
-            constraint_type=self.parameters.constraint_type,
-            harmonic_k=self.parameters.harmonic_k,
             minimize=self.parameters.minimize,
             ensemble=self.parameters.ensemble,
             nsteps=self.parameters.nsteps,

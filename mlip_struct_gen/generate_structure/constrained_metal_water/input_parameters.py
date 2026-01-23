@@ -94,8 +94,6 @@ class ConstrainedMetalWaterParameters:
         distance_constraints: List of DistanceConstraint objects (O-H, O-O).
         angle_constraints: List of AngleConstraint objects (H-O-H).
         constraint_seed: Seed for random selection of constrained pairs. Default: 42
-        constraint_type: "rigid" (K=10000) or "harmonic" (user K). Default: "rigid"
-        harmonic_k: Spring constant for harmonic constraints. Default: 50.0
         minimize: Add energy minimization before MD. Default: False
         nsteps: MD steps for LAMMPS. Default: 1000
         temp: Temperature in K. Default: 300.0
@@ -181,8 +179,6 @@ class ConstrainedMetalWaterParameters:
 
     # Constraint settings
     constraint_seed: int = 42
-    constraint_type: str = "rigid"  # "rigid" (K=10000) or "harmonic"
-    harmonic_k: float = 50.0  # Spring constant for harmonic constraints
 
     # LAMMPS MD parameters
     minimize: bool = False  # Add energy minimization before MD

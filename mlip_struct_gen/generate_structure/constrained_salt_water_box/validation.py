@@ -195,11 +195,6 @@ def validate_parameters(parameters: "ConstrainedSaltWaterBoxParameters") -> None
     if not isinstance(parameters.thermo_freq, int) or parameters.thermo_freq <= 0:
         raise ValueError("thermo_freq must be a positive integer")
 
-    # Constraint type validation
-    if parameters.constraint_type not in ["rigid", "harmonic"]:
-        raise ValueError("constraint_type must be 'rigid' or 'harmonic'")
-    if not isinstance(parameters.harmonic_k, int | float) or parameters.harmonic_k <= 0:
-        raise ValueError("harmonic_k must be positive")
     if not isinstance(parameters.minimize, bool):
         raise TypeError("minimize must be a boolean")
 

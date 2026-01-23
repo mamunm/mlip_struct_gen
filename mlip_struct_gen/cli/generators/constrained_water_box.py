@@ -43,12 +43,11 @@ Examples:
          --constrain-distance O O 1 2.5 \\
          --model graph.000.pb --output constrained.data
 
-  4. Multiple constraints with harmonic potential:
+  4. Multiple constraints:
      mlip-struct-gen generate constrained-water \\
          --n-water 32 --density 1.0 \\
          --constrain-distance O H 2 0.7 \\
          --constrain-distance O O 1 2.5 \\
-         --constraint-type harmonic --harmonic-k 50 \\
          --model graph.000.pb --output constrained.data
 
   5. Constrain all O-H bonds with energy minimization:
@@ -116,20 +115,6 @@ Examples:
         help="H-O-H angle constraint: 1 100 (1 angle to 100 degrees)",
     )
 
-    # Constraint type
-    parser.add_argument(
-        "--constraint-type",
-        type=str,
-        choices=["rigid", "harmonic"],
-        default="rigid",
-        help="Constraint type: rigid (K=10000) or harmonic (default: rigid)",
-    )
-    parser.add_argument(
-        "--harmonic-k",
-        type=float,
-        default=50.0,
-        help="Spring constant for harmonic constraints (default: 50.0)",
-    )
     parser.add_argument(
         "--minimize",
         action="store_true",
@@ -265,7 +250,6 @@ def handle_command(args: argparse.Namespace) -> int:
         if args.constrain_angle:
             for c in args.constrain_angle:
                 logger.info(f"  Angle constraint: H-O-H x{c[0]} -> {c[1]} deg")
-        logger.info(f"  Constraint type: {args.constraint_type}")
         logger.info(f"  Ensemble: {args.ensemble}")
         if args.minimize:
             logger.info("  Minimization: enabled")
@@ -287,8 +271,6 @@ def handle_command(args: argparse.Namespace) -> int:
             distance_constraints=distance_constraints,
             angle_constraints=angle_constraints,
             constraint_seed=args.constraint_seed,
-            constraint_type=args.constraint_type,
-            harmonic_k=args.harmonic_k,
             minimize=args.minimize,
             ensemble=args.ensemble,
             nsteps=args.nsteps,
@@ -360,11 +342,6 @@ def main() -> int:
     )
     parser.add_argument("--constrain-angle", nargs=2, action="append", metavar=("COUNT", "ANGLE"))
 
-    # Constraint type
-    parser.add_argument(
-        "--constraint-type", type=str, choices=["rigid", "harmonic"], default="rigid"
-    )
-    parser.add_argument("--harmonic-k", type=float, default=50.0)
     parser.add_argument("--minimize", action="store_true")
 
     # MD parameters

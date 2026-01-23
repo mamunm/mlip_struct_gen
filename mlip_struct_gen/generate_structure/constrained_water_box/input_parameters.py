@@ -118,8 +118,6 @@ class ConstrainedWaterBoxParameters:
     distance_constraints: list[DistanceConstraint] = field(default_factory=list)
     angle_constraints: list[AngleConstraint] = field(default_factory=list)
     constraint_seed: int = 42
-    constraint_type: str = "rigid"  # "rigid" (K=10000) or "harmonic"
-    harmonic_k: float = 50.0  # Spring constant for harmonic constraints
     minimize: bool = False  # Add energy minimization before MD
     ensemble: str = "npt"  # "npt" or "nvt"
     nsteps: int = 1000
