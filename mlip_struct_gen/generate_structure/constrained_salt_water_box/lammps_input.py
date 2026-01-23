@@ -180,7 +180,7 @@ minimize        1.0e-6 1.0e-8 1000 10000
     element_list = " ".join(elements)
 
     content = LAMMPS_TEMPLATE.format(
-        nsteps=kwargs.get("nsteps", 1000),
+        nsteps=kwargs.get("nsteps", 10000),
         thermo_freq=kwargs.get("thermo_freq", 10),
         dump_freq=kwargs.get("dump_freq", 10),
         temp=kwargs.get("temp", 300.0),
