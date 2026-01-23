@@ -82,14 +82,15 @@ def find_ion_water_pairs(
     positions = atoms.get_positions()
 
     # Build list of water atom indices with their info
+    # mol_idx is tracked for both O and H to enable freezing the entire water molecule
     water_atoms = []
     for mol_idx, mol in enumerate(molecules):
         o_idx, h1_idx, h2_idx = mol
         if water_element == "O":
             water_atoms.append((o_idx, mol_idx))
         elif water_element == "H":
-            water_atoms.append((h1_idx, None))
-            water_atoms.append((h2_idx, None))
+            water_atoms.append((h1_idx, mol_idx))
+            water_atoms.append((h2_idx, mol_idx))
 
     # Calculate all ion-water distances
     pairs = []
