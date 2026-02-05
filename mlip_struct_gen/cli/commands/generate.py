@@ -12,6 +12,10 @@ from ..generators import (
     metal_surface,
     metal_water,
     salt_water_box,
+    spring_metal_salt_water,
+    spring_metal_water,
+    spring_salt_water_box,
+    spring_water_box,
     water_box,
 )
 
@@ -53,14 +57,26 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
     # Add constrained-water subcommand
     constrained_water_box.add_parser(structure_subparsers)
 
+    # Add spring-water subcommand
+    spring_water_box.add_parser(structure_subparsers)
+
     # Add constrained-salt-water subcommand
     constrained_salt_water_box.add_parser(structure_subparsers)
+
+    # Add spring-salt-water subcommand
+    spring_salt_water_box.add_parser(structure_subparsers)
 
     # Add constrained-metal-water subcommand
     constrained_metal_water.add_parser(structure_subparsers)
 
+    # Add spring-metal-water subcommand
+    spring_metal_water.add_parser(structure_subparsers)
+
     # Add constrained-metal-salt-water subcommand
     constrained_metal_salt_water.add_parser(structure_subparsers)
+
+    # Add spring-metal-salt-water subcommand
+    spring_metal_salt_water.add_parser(structure_subparsers)
 
 
 def handle_command(args: argparse.Namespace) -> int:
@@ -87,12 +103,20 @@ def handle_command(args: argparse.Namespace) -> int:
         return graphene_water.handle_command(args)
     elif args.structure_type == "constrained-water":
         return constrained_water_box.handle_command(args)
+    elif args.structure_type == "spring-water":
+        return spring_water_box.handle_command(args)
     elif args.structure_type == "constrained-salt-water":
         return constrained_salt_water_box.handle_command(args)
+    elif args.structure_type == "spring-salt-water":
+        return spring_salt_water_box.handle_command(args)
     elif args.structure_type == "constrained-metal-water":
         return constrained_metal_water.handle_command(args)
+    elif args.structure_type == "spring-metal-water":
+        return spring_metal_water.handle_command(args)
     elif args.structure_type == "constrained-metal-salt-water":
         return constrained_metal_salt_water.handle_command(args)
+    elif args.structure_type == "spring-metal-salt-water":
+        return spring_metal_salt_water.handle_command(args)
     else:
         print(f"Unknown structure type: {args.structure_type}")
         return 1
