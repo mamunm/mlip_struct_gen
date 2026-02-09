@@ -16,6 +16,8 @@ from ..generators import (
     spring_metal_water,
     spring_salt_water_box,
     spring_water_box,
+    walled_metal_salt_water,
+    walled_metal_water,
     water_box,
 )
 
@@ -78,6 +80,12 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
     # Add spring-metal-salt-water subcommand
     spring_metal_salt_water.add_parser(structure_subparsers)
 
+    # Add walled-metal-water subcommand
+    walled_metal_water.add_parser(structure_subparsers)
+
+    # Add walled-metal-salt-water subcommand
+    walled_metal_salt_water.add_parser(structure_subparsers)
+
 
 def handle_command(args: argparse.Namespace) -> int:
     """
@@ -117,6 +125,10 @@ def handle_command(args: argparse.Namespace) -> int:
         return constrained_metal_salt_water.handle_command(args)
     elif args.structure_type == "spring-metal-salt-water":
         return spring_metal_salt_water.handle_command(args)
+    elif args.structure_type == "walled-metal-water":
+        return walled_metal_water.handle_command(args)
+    elif args.structure_type == "walled-metal-salt-water":
+        return walled_metal_salt_water.handle_command(args)
     else:
         print(f"Unknown structure type: {args.structure_type}")
         return 1

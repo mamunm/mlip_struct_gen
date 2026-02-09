@@ -16,6 +16,11 @@ from .metal_surface import MetalSurfaceGenerator, MetalSurfaceParameters
 from .metal_water import MetalWaterGenerator, MetalWaterParameters
 from .salt_water_box import SaltWaterBoxGenerator, SaltWaterBoxGeneratorParameters
 from .utils import load_structure, save_structure
+from .walled_metal_salt_water import (
+    WalledMetalSaltWaterGenerator,
+    WalledMetalSaltWaterParameters,
+)
+from .walled_metal_water import WalledMetalWaterGenerator, WalledMetalWaterParameters
 from .water_box import WaterBoxGenerator, WaterBoxGeneratorParameters
 
 __all__ = [
@@ -37,6 +42,10 @@ __all__ = [
     "ConstrainedSaltWaterBoxParameters",
     "DistanceConstraint",
     "AngleConstraint",
+    "WalledMetalWaterGenerator",
+    "WalledMetalWaterParameters",
+    "WalledMetalSaltWaterGenerator",
+    "WalledMetalSaltWaterParameters",
     "save_structure",
     "load_structure",
 ]
