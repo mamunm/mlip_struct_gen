@@ -168,8 +168,8 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
     if params.density <= 0:
         raise ValueError(f"density ({params.density} g/cm^3) must be positive")
 
-    if params.density < 0.5 or params.density > 1.5:
-        raise ValueError(f"density ({params.density} g/cm^3) should be between 0.5 and 1.5 g/cm^3")
+    if params.density < 0.1 or params.density > 1.5:
+        raise ValueError(f"density ({params.density} g/cm^3) should be between 0.1 and 1.5 g/cm^3")
 
     # Validate water model
     if params.water_model not in WATER_MODELS:
