@@ -1,11 +1,18 @@
-"""Convert Wannier center outputs to dpdata format with atomic dipole properties."""
+"""Unified converter: VASP OUTCAR + Wannier centroids -> dpdata with aligned atomic dipoles.
+
+For every OUTCAR discovered under ``input_dir``, this converter expects the same
+directory to contain ``wannier90_centres.xyz``. Wannier centroids are computed
+inline from that file against the post-``apply_type_map`` coordinates; no
+intermediate ``wc_out.npy`` is read or written. Energies, forces, coordinates,
+cells, virials and atomic dipoles are all written in the same pass so row and
+atom ordering are guaranteed to match under the user-provided ``type_map``.
+"""
 
 import json
-from collections import Counter, defaultdict
 from pathlib import Path
 
+import dpdata
 import numpy as np
-from ase.io import read
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -15,407 +22,218 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+from mlip_struct_gen.generate_dpdata.dpdata_converter import CompositionData
 from mlip_struct_gen.utils.logger import get_logger
-from mlip_struct_gen.wannier_centroid.compute_wannier_centroid import (
-    compute_wannier_centroid,
-    save_results,
-)
+from mlip_struct_gen.wannier_centroid.compute_wannier_centroid import parse_wannier_centers
+from mlip_struct_gen.wannier_centroid.pbc_utils import find_k_nearest_neighbors
+
+# Atoms whose atomic dipole is labelled from Wannier centers.
+WANNIER_TARGET_ATOMS = ("O", "Na", "Cl", "K", "Li", "Cs")
+
+# Number of nearest Wannier centers averaged per atom type (from
+# compute_wannier_centroid.py:111).
+WC_N_NEIGHBORS = {"O": 4, "Na": 4, "Cl": 4, "K": 4, "Li": 1, "Cs": 4}
+
+
+class WCCompositionData(CompositionData):
+    """CompositionData extended with per-frame atomic dipoles for selected atoms."""
+
+    def __init__(self, composition: str, type_map: list[str], sel_type: list[str]):
+        super().__init__(composition, type_map)
+        self.sel_type = sel_type
+        self.dipoles: list[np.ndarray] = []
+        self.n_sel_atoms: int | None = None
+
+    def add_dipole_frame(self, dipole_flat: np.ndarray, source_path: Path) -> bool:
+        """Append a single-frame flat dipole vector of shape (3 * n_sel_atoms,)."""
+        logger = get_logger()
+        n_vals = dipole_flat.shape[0]
+        if self.n_sel_atoms is None:
+            self.n_sel_atoms = n_vals // 3
+        elif n_vals != 3 * self.n_sel_atoms:
+            logger.warning(
+                f"Dipole length mismatch in {source_path}: got {n_vals}, "
+                f"expected {3 * self.n_sel_atoms}"
+            )
+            return False
+        self.dipoles.append(dipole_flat.reshape(1, -1))
+        return True
+
+    def save_to_disk(self, output_dir: Path, verbose: bool = False) -> None:
+        super().save_to_disk(output_dir, verbose=verbose)
+        if not self.dipoles:
+            return
+        set_dir = output_dir / self.composition / "set.000"
+        all_dipoles = np.vstack(self.dipoles)
+        assert all_dipoles.shape == (self.total_frames, 3 * self.n_sel_atoms)
+        np.save(set_dir / "atomic_dipole.npy", all_dipoles)
+        if verbose:
+            get_logger().info(
+                f"  Saved atomic_dipole.npy for {self.composition}: " f"{all_dipoles.shape}"
+            )
 
 
 class WCDPDataConverter:
-    """Convert Wannier center outputs (wc_out.npy) to dpdata format with atomic dipoles."""
+    """Unified OUTCAR + Wannier converter producing dpdata with atomic dipoles."""
 
     def __init__(
         self,
-        input_file_loc: Path | str,
+        input_dir: Path | str,
         output_dir: Path | str,
-        type_map: list[str] | None = None,
+        type_map: list[str],
+        sel_type: list[str] | None = None,
+        recursive: bool = True,
         verbose: bool = False,
+        save_file_loc: Path | str | None = None,
     ):
-        """
-        Initialize WCDPDataConverter.
-
-        Args:
-            input_file_loc: Path to text file containing directories with wc_out.npy files
-            output_dir: Output directory for dpdata (e.g., DATA/water)
-            type_map: Optional list of element symbols (e.g., ["Pt", "O", "H"])
-                     Used to handle missing elements - if POSCAR has O2H4 and type_map
-                     is ["Pt", "O", "H"], it will create Pt0O2H4 with zero Pt atoms
-            verbose: Whether to show debug messages
-        """
-        self.input_file_loc = Path(input_file_loc)
+        self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
-        self.type_map = type_map
+        self.type_map = list(type_map)
+        self.recursive = recursive
         self.verbose = verbose
+        self.save_file_loc = Path(save_file_loc) if save_file_loc else None
         self.logger = get_logger()
 
-        if not self.input_file_loc.exists():
-            raise ValueError(f"Input file does not exist: {self.input_file_loc}")
+        if not self.input_dir.exists():
+            raise ValueError(f"Input directory does not exist: {self.input_dir}")
 
-    def read_directory_list(self) -> list[Path]:
-        """
-        Read the list of directories from the input file.
+        if sel_type is None:
+            sel_type = [t for t in WANNIER_TARGET_ATOMS if t in self.type_map]
+        unknown = [t for t in sel_type if t not in self.type_map]
+        if unknown:
+            raise ValueError(f"sel_type contains elements not in type_map: {unknown}")
+        self.sel_type = list(sel_type)
+        self.sel_type_indices = {self.type_map.index(t) for t in self.sel_type}
 
-        Returns:
-            List of directory paths containing wc_out.npy files
-        """
-        directories = []
-        with open(self.input_file_loc) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    dir_path = Path(line)
-                    if dir_path.exists():
-                        directories.append(dir_path)
-                    else:
-                        self.logger.warning(f"Directory not found: {dir_path}")
+        self.composition_data: dict[str, WCCompositionData] = {}
 
-        self.logger.info(f"Found {len(directories)} valid directories")
-        return directories
+    def find_outcars(self) -> list[Path]:
+        if self.recursive:
+            outcars = sorted(self.input_dir.rglob("OUTCAR"))
+        else:
+            outcars = sorted(self.input_dir.glob("*/OUTCAR"))
+        self.logger.info(f"Found {len(outcars)} OUTCAR files")
+        return outcars
 
-    def load_wannier_data(self, directory: Path) -> np.ndarray | None:
-        """
-        Load wannier center data from wc_out.npy file.
+    def _get_composition_string(self, atom_numbs: list[int]) -> str:
+        parts = []
+        for i, element in enumerate(self.type_map):
+            count = atom_numbs[i] if i < len(atom_numbs) else 0
+            parts.append(f"{element}{count}")
+        return "".join(parts)
 
-        Args:
-            directory: Directory containing wc_out.npy file
-
-        Returns:
-            Loaded numpy array or None if failed
-        """
-        wc_file = directory / "wc_out.npy"
-        if not wc_file.exists():
-            if self.verbose:
-                self.logger.debug(f"wc_out.npy not found in {directory}")
-            return None
-
-        try:
-            data = np.load(wc_file, allow_pickle=True)
-            return data
-        except Exception as e:
-            if self.verbose:
-                self.logger.debug(f"Failed to load {wc_file}: {e}")
-            return None
-
-    def extract_composition_from_poscar(
-        self, directory: Path
-    ) -> tuple[dict[str, int], list[str]] | None:
-        """
-        Extract atomic composition from POSCAR file.
-
-        Args:
-            directory: Directory containing POSCAR file
-
-        Returns:
-            Tuple of (element counts dict, ordered element list) or None if failed
-        """
-        poscar_file = directory / "POSCAR"
-        if not poscar_file.exists():
-            if self.verbose:
-                self.logger.debug(f"POSCAR not found in {directory}")
-            return None
-
-        try:
-            atoms = read(poscar_file)
-            symbols = atoms.get_chemical_symbols()
-
-            # Count elements while preserving order
-            element_counts = Counter(symbols)
-
-            # Get unique elements in order of first appearance
-            seen = set()
-            ordered_elements = []
-            for symbol in symbols:
-                if symbol not in seen:
-                    ordered_elements.append(symbol)
-                    seen.add(symbol)
-
-            return element_counts, ordered_elements
-        except Exception as e:
-            if self.verbose:
-                self.logger.debug(f"Failed to read POSCAR from {directory}: {e}")
-            return None
-
-    def get_composition_string_ordered(
+    def _compute_atomic_dipoles(
         self,
-        element_counts: dict[str, int],
-        ordered_elements: list[str],
-        type_map: list[str] | None = None,
-    ) -> str:
-        """
-        Generate composition string with proper formatting based on element order.
+        coords: np.ndarray,
+        atom_types: np.ndarray,
+        cell: np.ndarray,
+        wannier_positions: np.ndarray,
+    ) -> np.ndarray:
+        """Compute flat dipole vector for selected atoms in ``atom_types`` order."""
+        inv_cell = np.linalg.inv(cell)
+        sel_indices = np.where(
+            np.array([t in self.sel_type_indices for t in atom_types], dtype=bool)
+        )[0]
+        if sel_indices.size == 0:
+            return np.empty(0, dtype=float)
 
-        Args:
-            element_counts: Dictionary of element counts
-            ordered_elements: List of elements in order from POSCAR
-            type_map: Optional type map to include additional elements with count 0
+        centroids = np.empty((sel_indices.size, 3), dtype=float)
+        for out_i, atom_i in enumerate(sel_indices):
+            symbol = self.type_map[atom_types[atom_i]]
+            k = WC_N_NEIGHBORS[symbol]
+            _, _, vectors = find_k_nearest_neighbors(coords[atom_i], wannier_positions, cell, k)
+            # Minimum-image each (wc_i - atom) vector.
+            vec_frac = vectors @ inv_cell
+            vectors = (vec_frac - np.round(vec_frac)) @ cell
+            # Mean, then minimum-image the mean as well.
+            centroid = vectors.mean(axis=0)
+            centroid = centroid - np.round(centroid @ inv_cell) @ cell
+            centroids[out_i] = centroid
+        return centroids.reshape(-1)
 
-        Returns:
-            Composition string (e.g., "Pt0O2H4" or "O2H4")
-        """
-        if type_map:
-            # Include all elements from type_map, even with count 0
-            composition_parts = []
-            for element in type_map:
-                count = element_counts.get(element, 0)
-                composition_parts.append(f"{element}{count}")
-            return "".join(composition_parts)
-        else:
-            # Use the order from POSCAR (ordered_elements)
-            composition_parts = []
-            for element in ordered_elements:
-                count = element_counts[element]
-                composition_parts.append(f"{element}{count}")
-            return "".join(composition_parts)
+    def _process_outcar(self, outcar_path: Path) -> tuple[str, dict] | None:
+        """Load one OUTCAR + compute its dipoles. Returns (composition, payload) or a skip tag."""
+        directory = outcar_path.parent
 
-    def get_composition_string(
-        self, element_counts: dict[str, int], type_map: list[str] | None = None
-    ) -> str:
-        """
-        Generate composition string with proper formatting.
-
-        Args:
-            element_counts: Dictionary of element counts
-            type_map: Optional type map to include additional elements with count 0
-
-        Returns:
-            Composition string (e.g., "Pt0O2H4" or "O2H4")
-        """
-        if type_map:
-            # Include all elements from type_map, even with count 0
-            composition_parts = []
-            for element in type_map:
-                count = element_counts.get(element, 0)
-                composition_parts.append(f"{element}{count}")
-            return "".join(composition_parts)
-        else:
-            # Define standard element order: metals, O, H, cations, anions
-            # Common FCC metals
-            metals = {"Pt", "Au", "Ag", "Pd", "Cu", "Ni", "Rh", "Ir", "Al", "Pb", "Ca", "Sr", "Yb"}
-            # Common cations
-            cations = {"Li", "Na", "K", "Rb", "Cs", "Mg", "Ca", "Sr", "Ba"}
-            # Common anions
-            anions = {"F", "Cl", "Br", "I"}
-
-            # Sort elements by priority
-            def element_priority(elem):
-                if elem in metals:
-                    return (1, elem)
-                elif elem == "O":
-                    return (2, elem)
-                elif elem == "H":
-                    return (3, elem)
-                elif elem in cations:
-                    return (4, elem)
-                elif elem in anions:
-                    return (5, elem)
-                else:
-                    return (6, elem)
-
-            sorted_elements = sorted(element_counts.keys(), key=element_priority)
-
-            composition_parts = []
-            for element in sorted_elements:
-                count = element_counts[element]
-                composition_parts.append(f"{element}{count}")
-            return "".join(composition_parts)
-
-    def extract_wannier_centroids(self, wc_data: np.ndarray) -> np.ndarray:
-        """
-        Extract wannier centroids from wc_out.npy data.
-
-        Args:
-            wc_data: Loaded wannier center data array
-
-        Returns:
-            Concatenated wannier centroids array
-        """
-        centroids = []
-        for atom_data in wc_data:
-            if isinstance(atom_data, dict) and "wannier_centroid" in atom_data:
-                centroid = atom_data["wannier_centroid"]
-                # Ensure it's a numpy array with shape (3,)
-                if isinstance(centroid, np.ndarray) and centroid.shape == (3,):
-                    centroids.append(centroid)
-                else:
-                    self.logger.warning(
-                        f"Invalid wannier_centroid shape for atom {atom_data.get('atom_index', '?')}"
-                    )
-                    centroids.append(np.zeros(3))
-            else:
-                self.logger.warning("Missing wannier_centroid for atom")
-                centroids.append(np.zeros(3))
-
-        # Concatenate all centroids into a single flat array
-        return np.concatenate(centroids)
-
-    def organize_data_by_composition(self, all_data: dict) -> dict:
-        """
-        Organize collected data by composition.
-
-        Args:
-            all_data: Dictionary mapping directories to their data
-
-        Returns:
-            Dictionary organized by composition
-        """
-        organized = defaultdict(list)
-
-        for _, data in all_data.items():
-            composition = data["composition"]
-            organized[composition].append(data)
-
-        return dict(organized)
-
-    def load_structure_data(self, directory: Path) -> dict | None:
-        """
-        Load structure data from POSCAR for coordinates, box, and types.
-
-        Args:
-            directory: Directory containing POSCAR
-
-        Returns:
-            Dictionary with structure data or None if failed
-        """
-        poscar_file = directory / "POSCAR"
-        if not poscar_file.exists():
-            return None
+        wannier_file = directory / "wannier90_centres.xyz"
+        if not wannier_file.exists():
+            if self.verbose:
+                self.logger.debug(f"No wannier90_centres.xyz in {directory}, skipping")
+            return ("__skip_no_wannier__", {})
 
         try:
-            atoms = read(poscar_file)
-
-            # Get coordinates
-            coords = atoms.get_positions()
-
-            # Get box/cell
-            cell = atoms.get_cell()
-
-            # Get chemical symbols
-            symbols = atoms.get_chemical_symbols()
-
-            return {
-                "coords": coords,
-                "cell": cell,
-                "symbols": symbols,
-                "n_atoms": len(atoms),
-            }
+            system = dpdata.LabeledSystem(str(outcar_path), fmt="vasp/outcar")
         except Exception as e:
             if self.verbose:
-                self.logger.debug(f"Failed to load structure from {directory}: {e}")
-            return None
+                self.logger.debug(f"Failed to load {outcar_path}: {e}")
+            return ("__skip_failed__", {})
 
-    def save_dpdata_format(self, composition_data: list[dict], composition: str) -> None:
-        """
-        Save data in dpdata format for a specific composition.
+        n_frames = len(system.data["coords"])
+        if n_frames != 1:
+            if self.verbose:
+                self.logger.debug(
+                    f"Multi-frame OUTCAR ({n_frames} frames) at {outcar_path}, skipping"
+                )
+            return ("__skip_multiframe__", {})
 
-        Args:
-            composition_data: List of data dictionaries for this composition
-            composition: Composition string (e.g., "O2H4")
-        """
-        # Create output directory structure
-        comp_dir = self.output_dir / composition / "set.000"
-        comp_dir.mkdir(parents=True, exist_ok=True)
+        system_elements = set(system.data.get("atom_names", []))
+        if not system_elements.issubset(set(self.type_map)):
+            if self.verbose:
+                self.logger.debug(
+                    f"Elements {system_elements} not subset of type_map in {outcar_path}"
+                )
+            return ("__skip_bad_elements__", {})
 
-        # Collect all atomic dipoles
-        atomic_dipoles = []
-        coords_list = []
-        cells_list = []
+        system.apply_type_map(self.type_map)
 
-        for data in composition_data:
-            atomic_dipoles.append(data["atomic_dipole"])
+        try:
+            wannier_positions = parse_wannier_centers(wannier_file)
+        except Exception as e:
+            if self.verbose:
+                self.logger.debug(f"Failed to parse {wannier_file}: {e}")
+            return ("__skip_failed__", {})
 
-            # Load structure data if available
-            struct_data = self.load_structure_data(data["directory"])
-            if struct_data:
-                coords_list.append(struct_data["coords"].flatten())
-                cells_list.append(struct_data["cell"].flatten())
+        try:
+            dipole_flat = self._compute_atomic_dipoles(
+                system.data["coords"][0],
+                np.asarray(system.data["atom_types"]),
+                np.asarray(system.data["cells"][0]),
+                wannier_positions,
+            )
+        except Exception as e:
+            self.logger.warning(f"{outcar_path}: dipole computation failed: {e}")
+            return ("__skip_failed__", {})
 
-        # Stack into arrays
-        atomic_dipoles_array = np.array(atomic_dipoles)
-
-        # Save atomic dipoles
-        np.save(comp_dir / "atomic_dipole.npy", atomic_dipoles_array)
-        self.logger.info(f"  Saved atomic_dipole.npy with shape {atomic_dipoles_array.shape}")
+        composition = self._get_composition_string(list(system.data["atom_numbs"]))
+        payload = {
+            "system_data": system.data,
+            "dipole_flat": dipole_flat,
+            "source": outcar_path,
+            "directory": directory.resolve(),
+        }
+        return (composition, payload)
 
     def run(self) -> None:
-        """Run the conversion process."""
-        self.logger.step("Starting Wannier center to dpdata conversion")
-
-        if self.type_map:
-            self.logger.info(f"Type map: {self.type_map}")
+        self.logger.step("Starting unified OUTCAR + Wannier -> dpdata conversion")
+        self.logger.info(f"Type map: {self.type_map}")
+        self.logger.info(f"Sel type (dipole atoms): {self.sel_type}")
         self.logger.info(f"Output directory: {self.output_dir}")
+        if self.save_file_loc:
+            self.logger.info(f"Saving OUTCAR locations to: {self.save_file_loc}")
 
-        # Read directory list
-        directories = self.read_directory_list()
-        if not directories:
-            self.logger.error("No valid directories found")
+        outcars = self.find_outcars()
+        if not outcars:
+            self.logger.error("No OUTCAR files found")
             return
 
-        # Process counters
-        processed_count = 0
-        skipped_count = 0
-        failed_count = 0
+        processed = 0
+        skipped_no_wannier = 0
+        skipped_multiframe = 0
+        skipped_bad_elements = 0
+        failed = 0
+        processed_paths: list[Path] = []
 
-        # Store all data
-        all_data = {}
-
-        # Process all directories
-        self.logger.step(f"Processing {len(directories)} directories")
-
-        # First pass: check for missing wc_out.npy and compute if needed
-        directories_needing_wc = []
-        for directory in directories:
-            wc_file = directory / "wc_out.npy"
-            if not wc_file.exists():
-                poscar_file = directory / "POSCAR"
-                wannier_file = directory / "wannier90_centres.xyz"
-
-                if poscar_file.exists() and wannier_file.exists():
-                    directories_needing_wc.append(directory)
-
-        if directories_needing_wc:
-            self.logger.info(
-                f"\nFound {len(directories_needing_wc)} directories needing Wannier centroid computation"
-            )
-            self.logger.step("Computing missing Wannier centroids")
-
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                MofNCompleteColumn(),
-                TimeRemainingColumn(),
-                transient=True,
-            ) as progress:
-                compute_task = progress.add_task(
-                    "[green]Computing Wannier centroids...", total=len(directories_needing_wc)
-                )
-
-                for directory in directories_needing_wc:
-                    progress.update(
-                        compute_task,
-                        description=f"[green]Computing WC for: {directory.name}",
-                    )
-
-                    try:
-                        # Compute wannier centroids
-                        results = compute_wannier_centroid(directory, verbose=False)
-                        # Save results
-                        save_results(results, directory)
-
-                        if self.verbose:
-                            self.logger.debug(f"Computed Wannier centroids for {directory}")
-                    except Exception as e:
-                        self.logger.warning(
-                            f"Failed to compute Wannier centroids for {directory}: {e}"
-                        )
-
-                    progress.advance(compute_task)
-
-            self.logger.info("Wannier centroid computation completed")
-
-        # Now process all directories with the conversion
-        self.logger.step(f"Converting {len(directories)} directories to dpdata format")
+        self.logger.step(f"Processing {len(outcars)} OUTCAR files")
 
         with Progress(
             SpinnerColumn(),
@@ -425,98 +243,109 @@ class WCDPDataConverter:
             TimeRemainingColumn(),
             transient=True,
         ) as progress:
-            task = progress.add_task("[cyan]Processing directories...", total=len(directories))
+            task = progress.add_task("[cyan]Processing OUTCARs...", total=len(outcars))
 
-            for directory in directories:
+            for outcar_path in outcars:
                 progress.update(
                     task,
-                    description=f"[cyan]Processing: {directory.name}",
+                    description=f"[cyan]Processing: {outcar_path.parent.name}/{outcar_path.name}",
                 )
-
-                # Load wannier data (should exist now if computation was successful)
-                wc_data = self.load_wannier_data(directory)
-                if wc_data is None:
-                    if self.verbose:
-                        self.logger.debug(
-                            f"No wc_out.npy found for {directory} after computation attempt"
-                        )
-                    skipped_count += 1
-                    progress.advance(task)
-                    continue
-
-                # Extract composition from POSCAR
-                comp_result = self.extract_composition_from_poscar(directory)
-                if comp_result is None:
-                    skipped_count += 1
-                    progress.advance(task)
-                    continue
-
-                element_counts, ordered_elements = comp_result
-
-                # Get composition string
-                composition = self.get_composition_string_ordered(
-                    element_counts, ordered_elements, self.type_map
-                )
-
-                # Extract wannier centroids
-                try:
-                    atomic_dipole = self.extract_wannier_centroids(wc_data)
-
-                    # Store data
-                    all_data[directory] = {
-                        "directory": directory,
-                        "composition": composition,
-                        "atomic_dipole": atomic_dipole,
-                        "element_counts": element_counts,
-                        "ordered_elements": ordered_elements,
-                    }
-
-                    processed_count += 1
-
-                except Exception as e:
-                    if self.verbose:
-                        self.logger.debug(f"Failed to process {directory}: {e}")
-                    failed_count += 1
-
+                result = self._process_outcar(outcar_path)
                 progress.advance(task)
 
-        # Summary
-        self.logger.info("\nProcessing summary:")
-        self.logger.info(f"  Processed: {processed_count} directories")
-        self.logger.info(f"  Skipped: {skipped_count} directories")
-        self.logger.info(f"  Failed: {failed_count} directories")
+                if result is None:
+                    failed += 1
+                    continue
+                comp, payload = result
+                if comp == "__skip_no_wannier__":
+                    skipped_no_wannier += 1
+                    continue
+                if comp == "__skip_multiframe__":
+                    skipped_multiframe += 1
+                    continue
+                if comp == "__skip_bad_elements__":
+                    skipped_bad_elements += 1
+                    continue
+                if comp == "__skip_failed__":
+                    failed += 1
+                    continue
 
-        if processed_count == 0:
-            self.logger.error("No directories were successfully processed")
+                if comp not in self.composition_data:
+                    self.composition_data[comp] = WCCompositionData(
+                        comp, self.type_map, self.sel_type
+                    )
+                bucket = self.composition_data[comp]
+                if not bucket.add_system(payload["system_data"], payload["source"]):
+                    failed += 1
+                    continue
+                if not bucket.add_dipole_frame(payload["dipole_flat"], payload["source"]):
+                    failed += 1
+                    continue
+
+                processed += 1
+                processed_paths.append(payload["directory"])
+
+        self.logger.info("\nProcessing summary:")
+        self.logger.info(f"  Processed: {processed}")
+        self.logger.info(f"  Skipped (no Wannier data): {skipped_no_wannier}")
+        self.logger.info(f"  Skipped (multi-frame OUTCAR): {skipped_multiframe}")
+        self.logger.info(f"  Skipped (elements not in type_map): {skipped_bad_elements}")
+        self.logger.info(f"  Failed: {failed}")
+
+        if processed == 0:
+            self.logger.error("No systems were successfully processed")
             return
 
-        # Organize by composition
-        organized_data = self.organize_data_by_composition(all_data)
-
-        # Save data for each composition
         self.logger.step("Saving to dpdata format")
-        self.logger.info(f"Found {len(organized_data)} unique compositions")
+        self.logger.info(f"Found {len(self.composition_data)} unique compositions")
 
-        # Create output directory if needed
         self.output_dir.mkdir(parents=True, exist_ok=True)
-
-        for composition, comp_data in organized_data.items():
-            self.logger.info(f"\n{composition}: {len(comp_data)} samples")
-            self.save_dpdata_format(comp_data, composition)
-
-        # Save metadata
-        metadata = {
-            "type_map": self.type_map,
-            "total_directories_processed": processed_count,
-            "directories_skipped": skipped_count,
-            "directories_failed": failed_count,
-            "unique_compositions": list(organized_data.keys()),
-            "samples_per_composition": {comp: len(data) for comp, data in organized_data.items()},
-        }
-
-        with open(self.output_dir / "metadata.json", "w") as f:
-            json.dump(metadata, f, indent=2)
+        total_frames = 0
+        for comp_data in self.composition_data.values():
+            comp_data.save_to_disk(self.output_dir, verbose=self.verbose)
+            total_frames += comp_data.total_frames
 
         self.logger.success("\nConversion completed successfully!")
         self.logger.info(f"Output saved to: {self.output_dir}")
-        self.logger.info(f"Metadata saved to: {self.output_dir / 'metadata.json'}")
+
+        self.logger.info("\nGenerated compositions:")
+        for comp, comp_data in self.composition_data.items():
+            self.logger.info(
+                f"  {comp}: {comp_data.total_frames} frames, "
+                f"{comp_data.n_atoms} atoms, "
+                f"{comp_data.n_sel_atoms or 0} dipole atoms"
+            )
+
+        metadata = {
+            "type_map": self.type_map,
+            "sel_type": self.sel_type,
+            "n_outcars_seen": len(outcars),
+            "processed": processed,
+            "skipped_no_wannier": skipped_no_wannier,
+            "skipped_multiframe": skipped_multiframe,
+            "skipped_bad_elements": skipped_bad_elements,
+            "failed": failed,
+            "unique_compositions": len(self.composition_data),
+            "total_frames": int(total_frames),
+            "compositions": {
+                comp: {
+                    "n_frames": int(cd.total_frames),
+                    "n_atoms": int(cd.n_atoms),
+                    "n_sel_atoms": int(cd.n_sel_atoms or 0),
+                    "n_systems": len(cd.frame_counts),
+                }
+                for comp, cd in self.composition_data.items()
+            },
+        }
+        with open(self.output_dir / "metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2)
+        self.logger.info(f"\nMetadata saved to: {self.output_dir / 'metadata.json'}")
+
+        if self.save_file_loc and processed_paths:
+            with open(self.save_file_loc, "w") as f:
+                for p in processed_paths:
+                    f.write(str(p) + "\n")
+            self.logger.info(
+                f"OUTCAR directory locations saved to: {self.save_file_loc} "
+                f"({len(processed_paths)} dirs)"
+            )
