@@ -4,41 +4,13 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from ..composition import (  # noqa: F401  (re-exported for compatibility)
+    DEFAULT_LATTICE_CONSTANTS,
+    SUPPORTED_METALS,
+    parse_composition,
+    vegard_lattice_constant,
+)
 from .input_parameters import MetalSaltWaterParameters
-
-# Supported FCC metals with experimental lattice constants (Angstroms)
-SUPPORTED_METALS: set[str] = {
-    "Al",
-    "Au",
-    "Ag",
-    "Cu",
-    "Ni",
-    "Pd",
-    "Pt",
-    "Pb",
-    "Rh",
-    "Ir",
-    "Ca",
-    "Sr",
-    "Yb",
-}
-
-# Default lattice constants for common FCC metals (Angstroms)
-DEFAULT_LATTICE_CONSTANTS = {
-    "Al": 4.050,
-    "Au": 4.078,
-    "Ag": 4.085,
-    "Cu": 3.615,
-    "Ni": 3.524,
-    "Pd": 3.890,
-    "Pt": 3.924,
-    "Pb": 4.950,
-    "Rh": 3.803,
-    "Ir": 3.839,
-    "Ca": 5.588,
-    "Sr": 6.085,
-    "Yb": 5.485,
-}
 
 # Supported salt types with their stoichiometry
 SUPPORTED_SALTS = {
@@ -104,13 +76,13 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
             f"or specify the full path to the executable."
         )
 
-    # Validate metal
-    if not params.metal:
-        raise ValueError("Metal element symbol is required")
+    # Validate metal (single element or alloy composition string)
+    composition = parse_composition(params.metal)
 
-    if params.metal not in SUPPORTED_METALS:
+    unsupported = [el for el in composition if el not in SUPPORTED_METALS]
+    if unsupported:
         raise ValueError(
-            f"Metal '{params.metal}' not supported. "
+            f"Metal(s) {', '.join(unsupported)} not supported. "
             f"Supported metals: {', '.join(sorted(SUPPORTED_METALS))}"
         )
 
@@ -269,10 +241,13 @@ def validate_parameters(params: MetalSaltWaterParameters) -> None:
 
 def get_lattice_constant(metal: str, custom_lattice: float | None = None) -> float:
     """
-    Get lattice constant for a metal.
+    Get lattice constant for a metal or alloy composition.
+
+    For alloys the default is the Vegard's-law (composition-weighted)
+    average of the per-element lattice constants.
 
     Args:
-        metal: Metal element symbol
+        metal: Metal element symbol or composition string (e.g. "CoCrFeMnNi")
         custom_lattice: Custom lattice constant (optional)
 
     Returns:
@@ -281,16 +256,7 @@ def get_lattice_constant(metal: str, custom_lattice: float | None = None) -> flo
     Raises:
         ValueError: If metal is not supported and no custom lattice is provided
     """
-    if custom_lattice is not None:
-        return custom_lattice
-
-    if metal in DEFAULT_LATTICE_CONSTANTS:
-        return DEFAULT_LATTICE_CONSTANTS[metal]
-
-    raise ValueError(
-        f"No default lattice constant for metal '{metal}'. "
-        f"Please provide a custom lattice constant."
-    )
+    return vegard_lattice_constant(parse_composition(metal), custom_lattice)
 
 
 def get_water_model_params(model: str) -> dict:

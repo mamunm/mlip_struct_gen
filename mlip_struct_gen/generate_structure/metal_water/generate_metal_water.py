@@ -9,36 +9,20 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ...utils.water_models import WATER_MODELS
+from ..composition import assign_random_symbols, get_element_mass, parse_composition
 from .input_parameters import MetalWaterParameters
 from .validation import get_lattice_constant, get_water_model_params, validate_parameters
 
 if TYPE_CHECKING:
     from ...utils.logger import MLIPLogger
 
-# Element masses in g/mol
-ELEMENT_MASSES = {
-    "H": 1.008,
-    "O": 15.9994,
-    "Na": 22.98977,
-    "Cl": 35.453,
-    "K": 39.0983,
-    "Li": 6.941,
-    "Ca": 40.078,
-    "Mg": 24.305,
-    "Br": 79.904,
-    "Cs": 132.905,
-    "Pt": 195.078,
-    "Au": 196.967,
-    "Ag": 107.868,
-    "Cu": 63.546,
-    "Ni": 58.693,
-    "Pd": 106.42,
-    "Fe": 55.845,
-    "Al": 26.982,
-    "Pb": 207.2,
-    "Rh": 102.906,
-    "Ir": 192.217,
-}
+
+def _mass_for(elem: str) -> float:
+    """Mass for LAMMPS output; water masses match the historical values."""
+    if elem == "H":
+        return 1.00794
+    return get_element_mass(elem)
+
 
 try:
     from ase.build import fcc111
@@ -68,6 +52,11 @@ class MetalWaterGenerator:
         """
         self.parameters = parameters
         validate_parameters(self.parameters)
+
+        # Parse metal specification (single element or alloy composition);
+        # element order defines the canonical atom-type ordering
+        self.composition = parse_composition(self.parameters.metal)
+        self.metal_elements = list(self.composition)
 
         # Setup logger
         self.logger: "MLIPLogger | None" = None
@@ -154,14 +143,25 @@ class MetalWaterGenerator:
 
         # Build the surface using ASE's fcc111 function
         # orthogonal=True ensures LAMMPS compatibility
+        # For alloys the first element is a placeholder; symbols are
+        # randomly reassigned to match the composition below
         self.metal_slab = fcc111(
-            self.parameters.metal,
+            self.metal_elements[0],
             size=(nx, ny, nz),
             a=self.lattice_constant,
             orthogonal=True,
             vacuum=0.0,
             periodic=True,
         )
+
+        if len(self.composition) > 1:
+            rng = np.random.default_rng(self.parameters.seed)
+            assign_random_symbols(self.metal_slab, self.composition, rng)
+            if self.logger:
+                self.logger.info(
+                    f"Assigned alloy composition {self.parameters.metal} "
+                    f"(seed={self.parameters.seed})"
+                )
 
         # Store box dimensions
         cell = self.metal_slab.get_cell()
@@ -460,30 +460,14 @@ H   -0.8164    0.0000    0.5773
         cell = self.combined_system.get_cell()
         symbols = self.combined_system.get_chemical_symbols()
 
-        # Count atoms by type
-        n_metal = symbols.count(self.parameters.metal)
+        # Group atoms by element: metal(s) in composition order, then O, H
+        element_order = self.metal_elements + ["O", "H"]
         n_o = symbols.count("O")
-        n_h = symbols.count("H")
 
-        # Sort atoms by element type (Metal, O, H)
-        sorted_positions = []
-
-        # First add metal atoms
-        for i, sym in enumerate(symbols):
-            if sym == self.parameters.metal:
-                sorted_positions.append(positions[i])
-
-        # Then add oxygen atoms
-        for i, sym in enumerate(symbols):
-            if sym == "O":
-                sorted_positions.append(positions[i])
-
-        # Finally add hydrogen atoms
-        for i, sym in enumerate(symbols):
-            if sym == "H":
-                sorted_positions.append(positions[i])
-
-        sorted_positions = np.array(sorted_positions)
+        counts = [symbols.count(elem) for elem in element_order]
+        sorted_positions = np.array(
+            [positions[i] for elem in element_order for i, sym in enumerate(symbols) if sym == elem]
+        )
 
         # Write POSCAR file
         with open(output_path, "w") as f:
@@ -498,10 +482,10 @@ H   -0.8164    0.0000    0.5773
                 f.write(f"{cell[i,0]:20.16f} {cell[i,1]:20.16f} {cell[i,2]:20.16f}\n")
 
             # Element symbols
-            f.write(f"{self.parameters.metal:4s} O    H   \n")
+            f.write(" ".join(f"{elem:4s}" for elem in element_order) + "\n")
 
             # Number of each element
-            f.write(f"{n_metal:4d} {n_o:4d} {n_h:4d}\n")
+            f.write(" ".join(f"{n:4d}" for n in counts) + "\n")
 
             # Coordinate type
             f.write("Cartesian\n")
@@ -523,21 +507,13 @@ H   -0.8164    0.0000    0.5773
         symbols = self.combined_system.get_chemical_symbols()
 
         # Count atoms by type
-        symbols.count(self.parameters.metal)
         n_o = symbols.count("O")
-        symbols.count("H")
         n_water = n_o
 
         # Total counts
         n_atoms = len(positions)
         n_bonds = n_water * 2  # 2 O-H bonds per water
         n_angles = n_water * 1  # 1 H-O-H angle per water
-
-        # Get atomic masses
-        from ase.data import atomic_masses, atomic_numbers
-
-        metal_number = atomic_numbers[self.parameters.metal]
-        metal_mass = atomic_masses[metal_number]
 
         # Get water charges based on model
         model_key = self.parameters.water_model.replace("/", "")
@@ -562,22 +538,18 @@ H   -0.8164    0.0000    0.5773
             f.write("0 dihedrals\n")
             f.write("0 impropers\n\n")
 
-            # Determine atom types based on elements parameter
+            # Determine atom types: canonical order is metal element(s) in
+            # composition order, then O, H; --elements overrides
             if self.parameters.elements:
-                # Use predefined element order
                 element_to_type = {elem: i + 1 for i, elem in enumerate(self.parameters.elements)}
-                metal_type = element_to_type.get(
-                    self.parameters.metal, len(self.parameters.elements) + 1
-                )
-                o_type = element_to_type.get("O", len(self.parameters.elements) + 2)
-                h_type = element_to_type.get("H", len(self.parameters.elements) + 3)
-                max_type = max(len(self.parameters.elements), metal_type, o_type, h_type)
             else:
-                # Sequential numbering: Metal=1, O=2, H=3
-                metal_type = 1
-                o_type = 2
-                h_type = 3
-                max_type = 3
+                element_to_type = {}
+            for elem in self.metal_elements + ["O", "H"]:
+                if elem not in element_to_type:
+                    element_to_type[elem] = len(element_to_type) + 1
+            o_type = element_to_type["O"]
+            h_type = element_to_type["H"]
+            max_type = len(element_to_type)
 
             # Types
             f.write(f"{max_type} atom types\n")
@@ -591,36 +563,8 @@ H   -0.8164    0.0000    0.5773
 
             # Masses
             f.write("Masses\n\n")
-            if self.parameters.elements:
-                # Write masses for all defined elements
-                for i, elem in enumerate(self.parameters.elements, 1):
-                    if elem in ELEMENT_MASSES:
-                        mass = ELEMENT_MASSES[elem]
-                    elif elem == self.parameters.metal:
-                        mass = metal_mass
-                    else:
-                        # Get from ASE if not in our list
-                        try:
-                            from ase.data import atomic_masses, atomic_numbers
-
-                            mass = atomic_masses[atomic_numbers.get(elem, 1)]
-                        except (ImportError, KeyError):
-                            mass = 1.0
-                    f.write(f"{i} {mass:.4f}  # {elem}\n")
-                # Add any missing types
-                written_types = len(self.parameters.elements)
-                if metal_type > written_types:
-                    f.write(f"{metal_type} {metal_mass:.4f}  # {self.parameters.metal}\n")
-                    written_types = metal_type
-                if o_type > written_types:
-                    f.write(f"{o_type} 15.9994  # O\n")
-                    written_types = o_type
-                if h_type > written_types:
-                    f.write(f"{h_type} 1.00794  # H\n")
-            else:
-                f.write(f"1 {metal_mass:.4f}  # {self.parameters.metal}\n")
-                f.write("2 15.9994  # O\n")
-                f.write("3 1.00794  # H\n")
+            for elem, type_id in sorted(element_to_type.items(), key=lambda x: x[1]):
+                f.write(f"{type_id} {_mass_for(elem):.4f}  # {elem}\n")
             f.write("\n")
 
             # Atoms
@@ -633,10 +577,11 @@ H   -0.8164    0.0000    0.5773
             h_atoms = []
 
             # Write metal atoms first (molecule ID 1)
+            metal_set = set(self.metal_elements)
             for i in range(len(symbols)):
-                if symbols[i] == self.parameters.metal:
+                if symbols[i] in metal_set:
                     f.write(
-                        f"{atom_id} {mol_id} {metal_type} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                        f"{atom_id} {mol_id} {element_to_type[symbols[i]]} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                     )
                     atom_id += 1
 
@@ -707,11 +652,14 @@ H   -0.8164    0.0000    0.5773
             f.write(f"0.0 {cell[2, 2]:.6f}\n")
             f.write("ITEM: ATOMS id type element x y z\n")
 
-            # Create type mapping
+            # Create type mapping (canonical order, matching the data files)
             if self.parameters.elements:
-                unique_elements = self.parameters.elements
+                unique_elements = list(self.parameters.elements)
             else:
-                unique_elements = sorted(set(symbols))
+                unique_elements = self.metal_elements + ["O", "H"]
+            for elem in symbols:
+                if elem not in unique_elements:
+                    unique_elements.append(elem)
 
             type_map = {elem: i + 1 for i, elem in enumerate(unique_elements)}
 
@@ -741,7 +689,7 @@ H   -0.8164    0.0000    0.5773
 
         # Count water molecules (assuming 3 atoms per water: O, H, H)
         n_water = sum(1 for s in symbols if s == "O")
-        n_metal = element_counts.get(self.parameters.metal, 0)
+        n_metal = sum(element_counts.get(elem, 0) for elem in self.metal_elements)
 
         with open(output_path, "w") as f:
             # Header
@@ -753,7 +701,8 @@ H   -0.8164    0.0000    0.5773
             # Counts section - only atoms
             f.write(f"{n_atoms} atoms\n\n")
 
-            # Determine atom types
+            # Determine atom types: canonical order is metal element(s) in
+            # composition order, then O, H; --elements overrides
             if self.parameters.elements:
                 # Use predefined element order
                 element_to_type = {elem: i + 1 for i, elem in enumerate(self.parameters.elements)}
@@ -763,12 +712,10 @@ H   -0.8164    0.0000    0.5773
                         element_to_type[elem] = len(element_to_type) + 1
                 max_atom_type = len(self.parameters.elements)
             else:
-                # Default order: metal first, then O, H
-                unique_elements = sorted(set(symbols))
-                # Put metal first
-                if self.parameters.metal in unique_elements:
-                    unique_elements.remove(self.parameters.metal)
-                    unique_elements = [self.parameters.metal] + unique_elements
+                unique_elements = self.metal_elements + ["O", "H"]
+                for elem in symbols:
+                    if elem not in unique_elements:
+                        unique_elements.append(elem)
                 element_to_type = {elem: i + 1 for i, elem in enumerate(unique_elements)}
                 max_atom_type = len(unique_elements)
 
@@ -785,13 +732,11 @@ H   -0.8164    0.0000    0.5773
             if self.parameters.elements:
                 # Write masses for all elements in predefined order
                 for i, elem in enumerate(self.parameters.elements, 1):
-                    mass = ELEMENT_MASSES.get(elem, 1.0)
-                    f.write(f"{i} {mass:<10.4f} # {elem}\n")
+                    f.write(f"{i} {get_element_mass(elem):<10.4f} # {elem}\n")
             else:
                 # Write masses for elements present in structure
                 for elem, type_id in sorted(element_to_type.items(), key=lambda x: x[1]):
-                    mass = ELEMENT_MASSES.get(elem, 1.0)
-                    f.write(f"{type_id} {mass:<10.4f} # {elem}\n")
+                    f.write(f"{type_id} {get_element_mass(elem):<10.4f} # {elem}\n")
             f.write("\n")
 
             # Atoms section - atomic style (no molecule ID, no charge)

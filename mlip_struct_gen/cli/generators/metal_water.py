@@ -56,8 +56,10 @@ Output formats:
         "-m",
         type=str,
         required=True,
-        choices=["Al", "Cu", "Ni", "Pd", "Ag", "Pt", "Au"],
-        help="Metal element for the surface",
+        help=(
+            "Metal element or alloy composition for the surface, "
+            "e.g. Pt, CoCrFeMnNi, Cu0.5Ni0.3Co0.2"
+        ),
     )
 
     parser.add_argument(
@@ -156,7 +158,7 @@ Output formats:
         "--seed",
         type=int,
         default=12345,
-        help="Random seed for Packmol (default: 12345)",
+        help="Random seed for Packmol and alloy site assignment (default: 12345)",
     )
 
     parser.add_argument(
@@ -277,30 +279,29 @@ def handle_command(args: argparse.Namespace) -> int:
     # Validate arguments
     validate_args(args)
 
-    # Check if metal is supported
-    supported_metals = ["Al", "Cu", "Ni", "Pd", "Ag", "Pt", "Au"]
-    if args.metal not in supported_metals:
-        logger.error(f"Unknown metal '{args.metal}'. Supported: Al, Cu, Ni, Pd, Ag, Pt, Au")
-        sys.exit(1)
+    # Check if metal specification is valid (single element or alloy composition)
+    from ...generate_structure.composition import SUPPORTED_METALS, parse_composition
+    from ...generate_structure.metal_water.validation import get_lattice_constant
 
-    # Get default lattice constants
-    default_lattice_constants = {
-        "Al": 4.046,
-        "Cu": 3.615,
-        "Ni": 3.524,
-        "Pd": 3.891,
-        "Ag": 4.085,
-        "Pt": 3.924,
-        "Au": 4.078,
-    }
+    try:
+        composition = parse_composition(args.metal)
+        unsupported = [el for el in composition if el not in SUPPORTED_METALS]
+        if unsupported:
+            raise ValueError(
+                f"Unknown metal(s) {', '.join(unsupported)}. "
+                f"Supported: {', '.join(sorted(SUPPORTED_METALS))}"
+            )
+    except ValueError as e:
+        logger.error(str(e))
+        sys.exit(1)
 
     # Warn if custom lattice constant differs significantly from default
     if args.lattice_constant is not None:
-        default_lc = default_lattice_constants[args.metal]
+        default_lc = get_lattice_constant(args.metal)
         if abs(args.lattice_constant - default_lc) > 0.1 and not args.dry_run:
             logger.warning(
                 f"Specified lattice constant {args.lattice_constant} Å differs from "
-                f"default {default_lc} Å for {args.metal}"
+                f"default {default_lc:.3f} Å for {args.metal}"
             )
 
     # Dry run
@@ -426,8 +427,10 @@ Output formats:
         "-m",
         type=str,
         required=True,
-        choices=["Al", "Cu", "Ni", "Pd", "Ag", "Pt", "Au"],
-        help="Metal element for the surface",
+        help=(
+            "Metal element or alloy composition for the surface, "
+            "e.g. Pt, CoCrFeMnNi, Cu0.5Ni0.3Co0.2"
+        ),
     )
 
     parser.add_argument(
@@ -526,7 +529,7 @@ Output formats:
         "--seed",
         type=int,
         default=12345,
-        help="Random seed for Packmol (default: 12345)",
+        help="Random seed for Packmol and alloy site assignment (default: 12345)",
     )
 
     parser.add_argument(

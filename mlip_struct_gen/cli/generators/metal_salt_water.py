@@ -68,7 +68,7 @@ Output formats:
         "--metal",
         type=str,
         required=True,
-        help="FCC metal element symbol (e.g., Pt, Au, Ag, Cu, Ni, Pd, Al)",
+        help=("FCC metal element or alloy composition, " "e.g. Pt, CoCrFeMnNi, Cu0.5Ni0.3Co0.2"),
     )
     parser.add_argument(
         "--size",
@@ -155,7 +155,7 @@ Output formats:
         "--seed",
         type=int,
         default=12345,
-        help="Random seed for Packmol (default: 12345)",
+        help="Random seed for Packmol and alloy site assignment (default: 12345)",
     )
     parser.add_argument(
         "--tolerance",
@@ -311,7 +311,7 @@ Output formats:
         "--metal",
         type=str,
         required=True,
-        help="FCC metal element symbol (e.g., Pt, Au, Ag, Cu, Ni, Pd, Al)",
+        help=("FCC metal element or alloy composition, " "e.g. Pt, CoCrFeMnNi, Cu0.5Ni0.3Co0.2"),
     )
     parser.add_argument(
         "--size",
@@ -398,7 +398,7 @@ Output formats:
         "--seed",
         type=int,
         default=12345,
-        help="Random seed for Packmol (default: 12345)",
+        help="Random seed for Packmol and alloy site assignment (default: 12345)",
     )
     parser.add_argument(
         "--tolerance",

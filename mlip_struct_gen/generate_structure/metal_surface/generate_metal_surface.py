@@ -5,38 +5,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ..composition import assign_random_symbols, get_element_mass, parse_composition
 from .input_parameters import MetalSurfaceParameters
 from .validation import get_lattice_constant, validate_parameters
 
 if TYPE_CHECKING:
     from ...utils.logger import MLIPLogger
-
-# Element masses in g/mol
-ELEMENT_MASSES = {
-    "H": 1.008,
-    "O": 15.9994,
-    "Na": 22.98977,
-    "Cl": 35.453,
-    "K": 39.0983,
-    "Li": 6.941,
-    "Ca": 40.078,
-    "Mg": 24.305,
-    "Br": 79.904,
-    "Cs": 132.905,
-    "Pt": 195.078,
-    "Au": 196.967,
-    "Ag": 107.868,
-    "Cu": 63.546,
-    "Ni": 58.693,
-    "Pd": 106.42,
-    "Fe": 55.845,
-    "Al": 26.982,
-    "Pb": 207.2,
-    "Rh": 102.906,
-    "Ir": 192.217,
-    "Sr": 87.62,
-    "Yb": 173.04,
-}
 
 try:
     from ase import Atoms
@@ -66,6 +40,11 @@ class MetalSurfaceGenerator:
         """
         self.parameters = parameters
         validate_parameters(self.parameters)
+
+        # Parse metal specification (single element or alloy composition);
+        # element order defines the canonical atom-type ordering
+        self.composition = parse_composition(self.parameters.metal)
+        self.metal_elements = list(self.composition)
 
         # Setup logger
         self.logger: "MLIPLogger | None" = None
@@ -114,14 +93,25 @@ class MetalSurfaceGenerator:
 
             # Build the surface using ASE's fcc111 function
             # orthogonal=True ensures LAMMPS compatibility
+            # For alloys the first element is a placeholder; symbols are
+            # randomly reassigned to match the composition below
             slab = fcc111(
-                self.parameters.metal,
+                self.metal_elements[0],
                 size=(nx, ny, nz),
                 a=self.lattice_constant,
                 orthogonal=self.parameters.orthogonalize,
                 vacuum=self.parameters.vacuum,
                 periodic=True,
             )
+
+            if len(self.composition) > 1:
+                rng = np.random.default_rng(self.parameters.seed)
+                assign_random_symbols(slab, self.composition, rng)
+                if self.logger:
+                    self.logger.info(
+                        f"Assigned alloy composition {self.parameters.metal} "
+                        f"(seed={self.parameters.seed})"
+                    )
 
             if self.logger:
                 self.logger.info(f"Created surface with {len(slab)} atoms")
@@ -261,7 +251,31 @@ class MetalSurfaceGenerator:
             slab: Atoms object to write
             output_path: Output file path
         """
+        symbols = slab.get_chemical_symbols()
+        if len(set(symbols)) > 1:
+            # Group atoms by canonical element order so POSCAR has one
+            # species block per element (ASE remaps constraints on slicing)
+            rank = {el: i for i, el in enumerate(self._element_type_order(symbols))}
+            slab = slab[sorted(range(len(slab)), key=lambda i: rank[symbols[i]])]
         write(str(output_path), slab, format="vasp", direct=False, vasp5=True)
+
+    def _element_type_order(self, symbols: list[str]) -> list[str]:
+        """
+        Canonical element -> atom-type ordering for LAMMPS output.
+
+        Uses the explicit elements parameter if given, else the metal
+        elements in composition order; any symbols present in the slab but
+        missing from that list are appended in order of appearance.
+        """
+        order = (
+            list(self.parameters.elements)
+            if self.parameters.elements
+            else list(self.metal_elements)
+        )
+        for symbol in symbols:
+            if symbol not in order:
+                order.append(symbol)
+        return order
 
     def _write_lammps(self, slab: Atoms, output_path: Path) -> None:
         """
@@ -274,17 +288,15 @@ class MetalSurfaceGenerator:
         # Get atomic data
         positions = slab.get_positions()
         cell = slab.get_cell()
-        slab.get_chemical_symbols()
+        symbols = slab.get_chemical_symbols()
         metal = self.parameters.metal
 
         # Count atoms
         n_atoms = len(positions)
 
-        # Get atomic mass
-        from ase.data import atomic_masses, atomic_numbers
-
-        atomic_number = atomic_numbers[metal]
-        atomic_mass = atomic_masses[atomic_number]
+        # Element -> atom type mapping
+        element_order = self._element_type_order(symbols)
+        element_to_type = {elem: i + 1 for i, elem in enumerate(element_order)}
 
         with open(output_path, "w") as f:
             # Header
@@ -297,20 +309,8 @@ class MetalSurfaceGenerator:
             f.write("0 dihedrals\n")
             f.write("0 impropers\n\n")
 
-            # Determine atom type based on elements parameter
-            if self.parameters.elements:
-                # Use predefined element order
-                if metal in self.parameters.elements:
-                    metal_type = self.parameters.elements.index(metal) + 1
-                else:
-                    metal_type = len(self.parameters.elements) + 1
-                max_atom_type = max(len(self.parameters.elements), metal_type)
-            else:
-                metal_type = 1
-                max_atom_type = 1
-
             # Types
-            f.write(f"{max_atom_type} atom types\n\n")
+            f.write(f"{len(element_order)} atom types\n\n")
 
             # Box dimensions
             f.write(f"0.0 {cell[0,0]:.6f} xlo xhi\n")
@@ -329,27 +329,8 @@ class MetalSurfaceGenerator:
 
             # Masses
             f.write("Masses\n\n")
-            if self.parameters.elements:
-                # Write masses for all defined elements
-                for i, elem in enumerate(self.parameters.elements, 1):
-                    if elem in ELEMENT_MASSES:
-                        mass = ELEMENT_MASSES[elem]
-                    elif elem == metal:
-                        mass = atomic_mass
-                    else:
-                        # Get from ASE if not in our list
-                        try:
-                            from ase.data import atomic_masses, atomic_numbers
-
-                            mass = atomic_masses[atomic_numbers.get(elem, 1)]
-                        except (ImportError, KeyError):
-                            mass = 1.0
-                    f.write(f"{i} {mass:.4f}  # {elem}\n")
-                # Add metal if not in elements list
-                if metal_type > len(self.parameters.elements):
-                    f.write(f"{metal_type} {atomic_mass:.4f}  # {metal}\n")
-            else:
-                f.write(f"1 {atomic_mass:.4f}  # {metal}\n")
+            for i, elem in enumerate(element_order, 1):
+                f.write(f"{i} {get_element_mass(elem):.4f}  # {elem}\n")
             f.write("\n")
 
             # Atoms
@@ -357,7 +338,8 @@ class MetalSurfaceGenerator:
             for i in range(n_atoms):
                 # atom_id mol_id atom_type charge x y z
                 f.write(
-                    f"{i+1} 1 {metal_type} 0.0 {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    f"{i+1} 1 {element_to_type[symbols[i]]} 0.0 "
+                    f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                 )
 
     def _write_lammps_atomic(self, slab: Atoms, output_path: Path) -> None:
@@ -372,14 +354,13 @@ class MetalSurfaceGenerator:
         # Get atomic data
         positions = slab.get_positions()
         cell = slab.get_cell()
+        symbols = slab.get_chemical_symbols()
         metal = self.parameters.metal
         n_atoms = len(positions)
 
-        # Get atomic mass
-        from ase.data import atomic_masses, atomic_numbers
-
-        atomic_number = atomic_numbers[metal]
-        atomic_mass = atomic_masses[atomic_number]
+        # Element -> atom type mapping
+        element_order = self._element_type_order(symbols)
+        element_to_type = {elem: i + 1 for i, elem in enumerate(element_order)}
 
         with open(output_path, "w") as f:
             # Header
@@ -388,20 +369,8 @@ class MetalSurfaceGenerator:
             # Counts - only atoms
             f.write(f"{n_atoms} atoms\n\n")
 
-            # Determine atom type based on elements parameter
-            if self.parameters.elements:
-                # Use predefined element order
-                if metal in self.parameters.elements:
-                    metal_type = self.parameters.elements.index(metal) + 1
-                else:
-                    metal_type = len(self.parameters.elements) + 1
-                max_atom_type = max(len(self.parameters.elements), metal_type)
-            else:
-                metal_type = 1
-                max_atom_type = 1
-
             # Types
-            f.write(f"{max_atom_type} atom types\n\n")
+            f.write(f"{len(element_order)} atom types\n\n")
 
             # Box dimensions
             f.write(f"0.0 {cell[0,0]:.6f} xlo xhi\n")
@@ -420,34 +389,16 @@ class MetalSurfaceGenerator:
 
             # Masses
             f.write("Masses\n\n")
-            if self.parameters.elements:
-                # Write masses for all defined elements
-                for i, elem in enumerate(self.parameters.elements, 1):
-                    if elem in ELEMENT_MASSES:
-                        mass = ELEMENT_MASSES[elem]
-                    elif elem == metal:
-                        mass = atomic_mass
-                    else:
-                        # Get from ASE if not in our list
-                        try:
-                            from ase.data import atomic_masses, atomic_numbers
-
-                            mass = atomic_masses[atomic_numbers.get(elem, 1)]
-                        except (ImportError, KeyError):
-                            mass = 1.0
-                    f.write(f"{i} {mass:.4f}  # {elem}\n")
-                # Add metal if not in elements list
-                if metal_type > len(self.parameters.elements):
-                    f.write(f"{metal_type} {atomic_mass:.4f}  # {metal}\n")
-            else:
-                f.write(f"1 {atomic_mass:.4f}  # {metal}\n")
+            for i, elem in enumerate(element_order, 1):
+                f.write(f"{i} {get_element_mass(elem):.4f}  # {elem}\n")
             f.write("\n")
 
             # Atoms - atomic style (no molecule ID, no charge)
             f.write("Atoms # atomic\n\n")
             for i in range(n_atoms):
                 f.write(
-                    f"{i+1} {metal_type} {positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
+                    f"{i+1} {element_to_type[symbols[i]]} "
+                    f"{positions[i,0]:.6f} {positions[i,1]:.6f} {positions[i,2]:.6f}\n"
                 )
 
     def _write_lammpstrj(self, slab: Atoms, output_path: Path) -> None:
@@ -476,13 +427,8 @@ class MetalSurfaceGenerator:
             f.write(f"0.0 {cell[2, 2]:.6f}\n")
             f.write("ITEM: ATOMS id type element x y z\n")
 
-            # Create type mapping
-            if self.parameters.elements:
-                unique_elements = self.parameters.elements
-            else:
-                unique_elements = sorted(set(symbols))
-
-            type_map = {elem: i + 1 for i, elem in enumerate(unique_elements)}
+            # Create type mapping (canonical order, matching the data files)
+            type_map = {elem: i + 1 for i, elem in enumerate(self._element_type_order(symbols))}
 
             # Write atoms
             for i, (symbol, pos) in enumerate(zip(symbols, positions, strict=False)):

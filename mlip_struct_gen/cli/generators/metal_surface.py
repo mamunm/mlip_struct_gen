@@ -20,7 +20,14 @@ def add_parser(subparsers: argparse._SubParsersAction) -> None:
         description="Generate FCC(111) metal surfaces using ASE",
         epilog="""
 Supported Metals:
-  Al, Au, Ag, Cu, Ni, Pd, Pt, Pb, Rh, Ir, Ca, Sr, Yb
+  Al, Au, Ag, Cu, Ni, Pd, Pt, Pb, Rh, Ir, Ca, Sr, Yb, Co, Cr, Fe, Mn
+
+Alloys (HEA):
+  --metal also accepts a composition string:
+    - CoCrFeMnNi: equimolar high-entropy alloy (Cantor alloy)
+    - Cu0.5Ni0.3Co0.2: explicit molar fractions (must sum to 1)
+  Elements are randomly assigned to FCC sites (--seed) and the lattice
+  constant defaults to the Vegard's-law average (--lattice-constant overrides).
 
 Size Parameter:
   Specify surface dimensions as three integers:
@@ -47,9 +54,9 @@ Examples:
      mlip-struct-gen generate metal-surface --metal Cu --size 3 3 4 \\
        --vacuum 10 --lattice-constant 3.62 --output cu_111.vasp
 
-  4. Large aluminum surface:
-     mlip-struct-gen generate metal-surface --metal Al --size 10 10 8 \\
-       --vacuum 20 --orthogonalize --output al_111_large.xyz
+  4. Cantor alloy (HEA) surface:
+     mlip-struct-gen generate metal-surface --metal CoCrFeMnNi --size 5 4 5 \\
+       --vacuum 15 --seed 42 --output hea_111.data
         """,
     )
 
@@ -68,8 +75,10 @@ Examples:
         "-m",
         type=str,
         default="Pt",
-        choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
-        help="Metal element symbol (default: Pt)",
+        help=(
+            "Metal element or alloy composition, e.g. Pt, CoCrFeMnNi, "
+            "Cu0.5Ni0.3Co0.2 (default: Pt)"
+        ),
     )
 
     # Size parameters
@@ -100,6 +109,14 @@ Examples:
         type=float,
         metavar="A",
         help="Custom lattice constant in Angstroms (uses default if not specified)",
+    )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=12345,
+        metavar="SEED",
+        help="Random seed for alloy site assignment (default: 12345)",
     )
 
     parser.add_argument(
@@ -277,6 +294,7 @@ def handle_command(args: argparse.Namespace) -> int:
             orthogonalize=args.orthogonalize,
             output_format=args.output_format,
             elements=args.elements if hasattr(args, "elements") else None,
+            seed=getattr(args, "seed", 12345),
             log=args.log,
             logger=param_logger,
         )
@@ -323,7 +341,14 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Supported Metals:
-  Al, Au, Ag, Cu, Ni, Pd, Pt, Pb, Rh, Ir, Ca, Sr, Yb
+  Al, Au, Ag, Cu, Ni, Pd, Pt, Pb, Rh, Ir, Ca, Sr, Yb, Co, Cr, Fe, Mn
+
+Alloys (HEA):
+  --metal also accepts a composition string:
+    - CoCrFeMnNi: equimolar high-entropy alloy (Cantor alloy)
+    - Cu0.5Ni0.3Co0.2: explicit molar fractions (must sum to 1)
+  Elements are randomly assigned to FCC sites (--seed) and the lattice
+  constant defaults to the Vegard's-law average (--lattice-constant overrides).
 
 Size Parameter:
   Specify surface dimensions as three integers:
@@ -342,6 +367,10 @@ Examples:
   3. Copper surface with custom lattice:
      mlip-metal-surface --metal Cu --size 3 3 4 --vacuum 10 \\
        --lattice-constant 3.62 --output cu_111.vasp
+
+  4. Cantor alloy (HEA) surface:
+     mlip-metal-surface --metal CoCrFeMnNi --size 5 4 5 --vacuum 15 \\
+       --seed 42 --output hea_111.data
         """,
     )
 
@@ -364,8 +393,10 @@ Examples:
         "-m",
         type=str,
         default="Pt",
-        choices=["Al", "Au", "Ag", "Cu", "Ni", "Pd", "Pt", "Pb", "Rh", "Ir", "Ca", "Sr", "Yb"],
-        help="Metal element symbol (default: Pt)",
+        help=(
+            "Metal element or alloy composition, e.g. Pt, CoCrFeMnNi, "
+            "Cu0.5Ni0.3Co0.2 (default: Pt)"
+        ),
     )
 
     # Size parameters
@@ -396,6 +427,14 @@ Examples:
         type=float,
         metavar="A",
         help="Custom lattice constant in Angstroms",
+    )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=12345,
+        metavar="SEED",
+        help="Random seed for alloy site assignment (default: 12345)",
     )
 
     parser.add_argument(

@@ -16,8 +16,13 @@ class MetalSurfaceParameters:
     with specified size and vacuum regions using the Atomic Simulation Environment (ASE).
 
     Args:
-        metal: Metal element symbol (e.g., "Au", "Pt", "Cu", "Ag", "Pd", "Ni", "Al").
-            Must be a valid element symbol for an FCC metal.
+        metal: Metal element symbol (e.g., "Au", "Pt", "Cu", "Ag", "Pd", "Ni", "Al")
+            or an alloy composition string for high-entropy alloys:
+            - "CoCrFeMnNi": equimolar composition (Cantor alloy)
+            - "Cu0.5Ni0.3Co0.2": explicit molar fractions (must sum to 1)
+            For alloys, elements are randomly assigned to FCC lattice sites
+            (seeded by `seed`) and the element order in the string defines the
+            LAMMPS atom-type ordering.
 
         size: Surface size as (nx, ny, nz) unit cells.
             - nx, ny: lateral dimensions (repetitions in x and y)
@@ -59,6 +64,9 @@ class MetalSurfaceParameters:
             Elements not in the structure will still have their masses defined.
             If None (default), uses sequential numbering based on occurrence.
             Only applies when output_format is "lammps".
+
+        seed: Random seed for alloy site assignment (multi-element metal only).
+            Default: 12345.
 
         log: Enable logging output during surface generation.
             If True and logger is None, creates a new MLIPLogger instance.
@@ -109,5 +117,6 @@ class MetalSurfaceParameters:
     orthogonalize: bool = True
     output_format: str | None = None
     elements: list[str] | None = None
+    seed: int = 12345
     log: bool = False
     logger: Optional["MLIPLogger"] = None
